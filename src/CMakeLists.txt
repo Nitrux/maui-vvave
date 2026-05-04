@@ -40,30 +40,14 @@ set(vvave_SRCS
 qt_add_resources(vvave_QML_QRC
     assets.qrc)
 
-if(UNIX AND NOT ANDROID)
-    qt_generate_dbus_interface(${CMAKE_CURRENT_SOURCE_DIR}/kde/server.h org.kde.Vvave.xml)
-    qt_add_dbus_adaptor(vvave_dbus_SRCS ${CMAKE_CURRENT_BINARY_DIR}/org.kde.Vvave.xml kde/server.h Server)
-    qt_add_dbus_interface(vvave_dbus_SRCS ${CMAKE_CURRENT_BINARY_DIR}/org.kde.Vvave.xml vvaveinterface)
-endif()
+qt_generate_dbus_interface(${CMAKE_CURRENT_SOURCE_DIR}/kde/server.h org.kde.Vvave.xml)
+qt_add_dbus_adaptor(vvave_dbus_SRCS ${CMAKE_CURRENT_BINARY_DIR}/org.kde.Vvave.xml kde/server.h Server)
+qt_add_dbus_interface(vvave_dbus_SRCS ${CMAKE_CURRENT_BINARY_DIR}/org.kde.Vvave.xml vvaveinterface)
 
-if(ANDROID)
-
-    qt_add_executable(${PROJECT_NAME}
-        MANUAL_FINALIZATION
-        ${vvave_SRCS}
-        ${vvave_QML_QRC})
-
-    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android_files)
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/android_files/version.gradle.in ${CMAKE_BINARY_DIR}/src/version.gradle)
-
-    include(/home/camilo/Android/Sdk/android_openssl/android_openssl.cmake)
-    add_android_openssl_libraries(${PROJECT_NAME})
-else()
-    qt_add_executable(${PROJECT_NAME}
-        ${vvave_SRCS}
-        ${vvave_dbus_SRCS}
-        ${vvave_QML_QRC})
-endif()
+qt_add_executable(${PROJECT_NAME}
+    ${vvave_SRCS}
+    ${vvave_dbus_SRCS}
+    ${vvave_QML_QRC})
 
 set_source_files_properties(utils/Player.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
 set_source_files_properties(db/Queries.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
@@ -98,41 +82,18 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     utils/Player.js
     db/Queries.js)
 
-if (ANDROID)
-    # find_package(OpenSSL REQUIRED)
+target_sources(${PROJECT_NAME}
+    PRIVATE
+    kde/mpris2/mediaplayer2.cpp
+    kde/mpris2/mediaplayer2player.cpp)
 
-    # target_link_libraries(${PROJECT_NAME}
-    #     PRIVATE
-    #     OpenSSL::SSL)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+    Qt6::DBus
+    Qt6::Widgets)
 
-    kde_source_files_enable_exceptions(${PROJECT_NAME})
-
-    # target_link_libraries(${PROJECT_NAME} PRIVATE -L/home/camilo/Qt/6.9.0/android_arm64_v8a/lib/libtag_arm64-v8a.so)
-    # target_link_libraries(${PROJECT_NAME} PRIVATE -L/home/camilo/Qt/6.9.0/android_arm64_v8a/lib/libtag_c_arm64-v8a.so)
-    # target_include_directories(${PROJECT_NAME} PUBLIC "/home/camilo/Qt/6.9.0/android_arm64_v8a/include/taglib")
-
-    set(Taglib_LIBRARIES
-        Taglib::Taglib)
-
-elseif(UNIX AND NOT WIN32 AND NOT APPLE)
-    target_sources(${PROJECT_NAME}
-        PRIVATE
-        kde/mpris2/mediaplayer2.cpp
-        kde/mpris2/mediaplayer2player.cpp)
-
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-        Qt6::DBus)
-
-    set(Taglib_LIBRARIES
-        Taglib::Taglib)
-endif()
-
-if(UNIX OR WIN32 OR APPLE AND NOT ANDROID)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-        Qt6::Widgets)
-endif()
+set(Taglib_LIBRARIES
+    Taglib::Taglib)
 
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
@@ -155,9 +116,7 @@ target_link_libraries(${PROJECT_NAME}
     KF6::I18n
 ${Taglib_LIBRARIES})
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
-    install(TARGETS ${PROJECT_NAME} ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-    install(FILES assets/vvave.svg DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps)
-endif()
+install(TARGETS ${PROJECT_NAME} ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(FILES assets/vvave.svg DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps)
 
 qt_finalize_target(${PROJECT_NAME})

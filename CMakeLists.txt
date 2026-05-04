@@ -10,6 +10,17 @@ add_compile_definitions(APP_COPYRIGHT_NOTICE="© 2019-2025 Maui Development Team
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(CheckCXXCompilerFlag)
+if(NOT CMAKE_CROSSCOMPILING)
+    string(TOLOWER "${CMAKE_HOST_SYSTEM_PROCESSOR}" _host_processor)
+    if(_host_processor MATCHES "^(x86_64|amd64)$")
+        check_cxx_compiler_flag("-march=x86-64-v3" HAS_X86_64_V3)
+        if(HAS_X86_64_V3)
+            add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-march=x86-64-v3>")
+        endif()
+    endif()
+endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_AUTOUIC ON)
@@ -17,6 +28,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 project(vvave VERSION ${VVAVE_VERSION} LANGUAGES CXX)
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "This project supports Linux only.")
+endif()
+
 
 set(QT_MAJOR_VERSION 6)
 
@@ -27,10 +43,8 @@ find_package(ECM ${REQUIRED_KF_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 # set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${ECM_MODULE_PATH})
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
-    include(KDEInstallDirs)
-    include(KDECMakeSettings)
-endif()
+include(KDEInstallDirs)
+include(KDECMakeSettings)
 
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(KDEClangFormat)
@@ -38,29 +52,13 @@ include(ECMSetupVersion)
 include(ECMSourceVersionControl)
 include(FeatureSummary)
 
-if(ANDROID)
-    set(ANDROID_ABIS "arm64-v8a")
-endif()
-
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Qml Quick QuickControls2 Network Sql Xml Multimedia)
 find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
 
 find_package(MauiKit4 REQUIRED COMPONENTS FileBrowsing Audio)
 
-if(ANDROID)
-    find_package(Taglib 1.4 REQUIRED)
-    # target_link_libraries
-else()
-    find_package(Taglib 1.4 REQUIRED)
-endif()
-
-if(UNIX AND NOT ANDROID)
-    find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS DBus)
-endif()
-
-if(UNIX OR WIN32 OR APPLE AND NOT ANDROID)
-    find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Widgets)
-endif()
+find_package(Taglib 1.4 REQUIRED)
+find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS DBus Widgets)
 
 if(${ECM_SOURCE_UNDER_VERSION_CONTROL})
     execute_process(
@@ -95,10 +93,8 @@ add_subdirectory(src)
 
 ki18n_install(po)
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
-    install(FILES org.kde.vvave.desktop DESTINATION ${KDE_INSTALL_APPDIR})
-    install(FILES org.kde.vvave.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
-endif()
+install(FILES org.kde.vvave.desktop DESTINATION ${KDE_INSTALL_APPDIR})
+install(FILES org.kde.vvave.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
 
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 
@@ -107,3 +103,14 @@ kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
 
 qt_finalize_project()
 
+
+if(NOT TARGET uninstall)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE
+        @ONLY)
+
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+endif()
