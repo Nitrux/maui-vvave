@@ -12,6 +12,9 @@ import "../utils/Player.js" as Player
 
 VVaveTable
 {
+    Maui.Theme.colorSet: Maui.Theme.Window
+    Maui.Theme.inherit: false
+
     trackNumberVisible: false
     coverArtVisible: false
 

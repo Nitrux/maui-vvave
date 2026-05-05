@@ -149,19 +149,15 @@ bool CollectionDB::insert(const QString &tableName, const QVariantMap &insertDat
     for (int i = 0; i < totalFields; ++i)
         strValues.append("?");
 
-    QString sqlQueryString = "INSERT INTO " + tableName + " (" + QString(fields.join(",")) + ") VALUES(" + QString(strValues.join(",")) + ")";
+    QString sqlQueryString = "INSERT OR IGNORE INTO " + tableName + " (" + QString(fields.join(",")) + ") VALUES(" + QString(strValues.join(",")) + ")";
     QSqlQuery query(this->m_db);
     query.prepare(sqlQueryString);
 
     int k = 0;
     for (const QVariant &value : values)
     {
-        qDebug() << "Binding to INSERT << " << value;
         query.bindValue(k++, value);
     }
-
-    qDebug() << "Insert values "<< insertData.values();
-
 
     bool ok = query.exec();
 

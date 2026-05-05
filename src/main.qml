@@ -87,6 +87,7 @@ Maui.ApplicationWindow
 
     /*HANDLE EVENTS*/
     signal contextualPlayNext()
+    property bool sidebarDebug: true
 
     onClosing: (close) =>
                {
@@ -95,6 +96,31 @@ Maui.ApplicationWindow
                }
 
     onFocusViewChanged: setAndroidStatusBarColor()
+
+    function logSidebarState(event, details)
+    {
+        if (!sidebarDebug || !_sideBarView || !_sideBarView.sideBar)
+            return
+
+        const sb = _sideBarView.sideBar
+        let msg = "[VVAVE_SIDEBAR] " + event
+                + " pos=" + sb.position
+                + " visible=" + sb.visible
+                + " collapsed=" + sb.collapsed
+                + " peeking=" + sb.peeking
+                + " resizing=" + sb.resizing
+                + " width=" + sb.width
+                + " y=" + sb.y
+                + " prefWidth=" + sb.preferredWidth
+                + " sideBarHeight=" + sb.height
+                + " panel=" + (_playlistPanel ? (_playlistPanel.width + "x" + _playlistPanel.height + "@" + _playlistPanel.x + "," + _playlistPanel.y) : "n/a")
+                + " root=" + root.width + "x" + root.height
+
+        if (details !== undefined && details !== null && details !== "")
+            msg += " details=" + details
+
+        console.log(msg)
+    }
 
     Loader
     {
@@ -245,6 +271,14 @@ Maui.ApplicationWindow
                 console.log("NO CONTEXT MENU", activeFocusItem, activeFocusItem.currentItem)
             }
         }]
+
+    Shortcut
+    {
+        sequence: "Escape"
+        context: Qt.WindowShortcut
+        enabled: _sideBarView && _sideBarView.sideBar && _sideBarView.sideBar.position > 0
+        onActivated: handleEscapeShortcut()
+    }
 
     FloatingDisk
     {
@@ -499,28 +533,71 @@ Maui.ApplicationWindow
         id: _sideBarView
         anchors.fill: parent
         background: null
-
-        sideBar.autoShow: true
+        Maui.Theme.colorSet: Maui.Theme.View
+        readonly property real topChromeOffset: (swipeView ? swipeView.headBar.height : 0) + Maui.Style.space.small
+        sideBar.preferredWidth: Math.min(root.width * (root.height > root.width ? 0.84 : 0.38), Maui.Style.units.gridUnit * 24)
+        sideBar.minimumWidth: Maui.Style.units.gridUnit * 14
+        sideBar.maximumWidth: Maui.Style.units.gridUnit * 30
+        sideBar.collapsed: root.height > root.width || root.width < Maui.Style.units.gridUnit * 42
+        sideBar.floats: true
+        sideBar.y: _sideBarView.topChromeOffset
+        sideBar.height: Math.max(0, _sideBarView.height - _mainPage.footBar.height - _sideBarView.topChromeOffset - Maui.Style.space.small)
+        sideBar.autoShow: false
         sideBar.autoHide: true
-        sideBar.resizeable: !Maui.Handy.isMobile
-        sideBar.preferredWidth: Math.max(Maui.Style.units.gridUnit * 14, Math.min(root.width * 0.32, Maui.Style.units.gridUnit * 24))
-        sideBar.background: Rectangle
-        {
-            color: Maui.Theme.alternateBackgroundColor
-            radius: Maui.Style.radiusV
-            opacity: 0.94
-        }
 
-        sideBarContent: MainPlaylist
+        Connections
         {
-            id: _mainPlaylist
-            anchors.fill: parent
+            target: _sideBarView.sideBar
+            ignoreUnknownSignals: true
+
+            function onPositionChanged() { logSidebarState("positionChanged") }
+            function onVisibleChanged() { logSidebarState("visibleChanged") }
+            function onCollapsedChanged() { logSidebarState("collapsedChanged") }
+            function onPeekingChanged() { logSidebarState("peekingChanged") }
+            function onResizingChanged() { logSidebarState("resizingChanged") }
+            function onWidthChanged() { logSidebarState("widthChanged") }
+            function onHeightChanged() { logSidebarState("heightChanged") }
+            function onOpened() { logSidebarState("openedSignal") }
+            function onClosed() { logSidebarState("closedSignal") }
+        }
+        sideBarContent: Maui.Page
+        {
+            id: _playlistPanel
+            readonly property int panelMargin: Maui.Handy.isMobile ? Maui.Style.space.medium : Maui.Style.contentMargins
+            x: panelMargin
+            y: panelMargin
+            width: Math.max(0, _sideBarView.sideBar.width - (panelMargin * 2))
+            height: Math.max(0, _sideBarView.sideBar.height - (panelMargin * 2))
+            clip: true
+            opacity: _sideBarView.sideBar.position
+
+            Behavior on opacity
+            {
+                NumberAnimation
+                {
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            layer.enabled: true
+            Maui.Theme.colorSet: Maui.Theme.Window
+            Maui.Theme.inherit: false
 
             background: Rectangle
             {
+                clip: true
                 color: Maui.Theme.alternateBackgroundColor
                 radius: Maui.Style.radiusV
-                opacity: 0.94
+                border.color: Maui.Theme.backgroundColor
+                border.width: 1
+            }
+
+            MainPlaylist
+            {
+                id: _mainPlaylist
+                anchors.fill: parent
+                background: null
             }
         }
 
@@ -659,7 +736,11 @@ Maui.ApplicationWindow
                     {
                         text: i18n("Toggle Sidebar")
                         display: AbstractButton.IconOnly
-                        icon.name: _sideBarView.sideBar.visible ? "sidebar-collapse" : "sidebar-expand"
+                        icon.name: (_sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0) ? "sidebar-collapse" : "sidebar-expand"
+                        checkable: true
+                        checked: _sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0
+                        ToolTip.visible: hovered
+                        ToolTip.text: i18n("Toggle sidebar")
                         onClicked: toggleSidebar()
                     },
 
@@ -674,8 +755,6 @@ Maui.ApplicationWindow
                         text: i18n("Songs")
                         display: AbstractButton.IconOnly
                         icon.name: "view-media-track"
-                        checkable: true
-                        checked: swipeView.currentIndex === viewsIndex.tracks
                         onClicked: showBrowserCategory(viewsIndex.tracks)
                     },
 
@@ -684,8 +763,6 @@ Maui.ApplicationWindow
                         text: i18n("Albums")
                         display: AbstractButton.IconOnly
                         icon.name: "view-media-album-cover"
-                        checkable: true
-                        checked: swipeView.currentIndex === viewsIndex.albums
                         onClicked: showBrowserCategory(viewsIndex.albums)
                     },
 
@@ -694,8 +771,6 @@ Maui.ApplicationWindow
                         text: i18n("Artists")
                         display: AbstractButton.IconOnly
                         icon.name: "view-media-artist"
-                        checkable: true
-                        checked: swipeView.currentIndex === viewsIndex.artists
                         onClicked: showBrowserCategory(viewsIndex.artists)
                     },
 
@@ -704,8 +779,6 @@ Maui.ApplicationWindow
                         text: i18n("Tags")
                         display: AbstractButton.IconOnly
                         icon.name: "tag"
-                        checkable: true
-                        checked: swipeView.currentIndex === viewsIndex.playlists
                         onClicked: showBrowserCategory(viewsIndex.playlists)
                     },
 
@@ -890,6 +963,9 @@ Maui.ApplicationWindow
 
     Component.onCompleted:
     {
+        logSidebarState("appCompleted:beforeClose")
+        Qt.callLater(() => _sideBarView.sideBar.close())
+        Qt.callLater(() => logSidebarState("appCompleted:afterCloseCall"))
         Vvave.fetchArtwork = settings.fetchArtwork
         Vvave.rescan()
     }
@@ -928,7 +1004,24 @@ Maui.ApplicationWindow
 
     function toggleSidebar()
     {
+        logSidebarState("toggleRequested:before")
         _sideBarView.sideBar.toggle()
+        Qt.callLater(() => logSidebarState("toggleRequested:afterCall"))
+    }
+
+    function handleEscapeShortcut()
+    {
+        if (!_sideBarView || !_sideBarView.sideBar || _sideBarView.sideBar.position === 0)
+            return false
+
+        logSidebarState("escapeRequested:beforeClose")
+        _sideBarView.sideBar.close()
+        Qt.callLater(() => {
+            logSidebarState("escapeRequested:afterClose")
+            if (_stackView && _stackView.currentItem && _stackView.currentItem.forceActiveFocus)
+                _stackView.currentItem.forceActiveFocus()
+        })
+        return true
     }
 
     function showBrowserCategory(index)

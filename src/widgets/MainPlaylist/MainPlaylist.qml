@@ -140,9 +140,12 @@ Maui.Page
         headBar.visible: false
         Maui.Theme.colorSet: Maui.Theme.Window
 
-        holder.emoji: "qrc:/assets/view-media-track.svg"
-        holder.title : "Nothing to play!"
-        holder.body: i18n("Start putting together your playlist.")
+        holder.visible: listModel.list.count === 0
+        holder.label1.width: Math.min(width - (Maui.Style.space.big * 2), Maui.Style.units.gridUnit * 12)
+        holder.label2.width: holder.label1.width
+        holder.emoji: "media-playlist-append"
+        holder.title : i18n("Playlist is Empty")
+        holder.body: i18n("Play videos from your library to build a playlist.")
         listView.header: Column
         {
             width: parent.width
