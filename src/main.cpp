@@ -4,6 +4,7 @@
 #include <QCommandLineParser>
 #include <QIcon>
 #include <QApplication>
+#include <QSurfaceFormat>
 
 #include <KLocalizedString>
 
@@ -30,7 +31,6 @@
 #include "models/albums/albumsmodel.h"
 #include "models/playlists/playlistsmodel.h"
 #include "models/tracks/tracksmodel.h"
-#include "models/folders/foldersmodel.h"
 
 #include "kde/server.h"
 
@@ -39,6 +39,10 @@
 Q_DECL_EXPORT int main(int argc, char *argv[])
 {
     qDebug() << "APP LOADING SPEED TESTS" << 0;
+
+    QSurfaceFormat format;
+    format.setAlphaBufferSize(8);
+    QSurfaceFormat::setDefaultFormat(format);
 
     QApplication app(argc, argv);
 
@@ -131,8 +135,6 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     qmlRegisterType<TracksModel>(VVAVE_URI, 1, 0, "Tracks");
     qmlRegisterType<AlbumsModel>(VVAVE_URI, 1, 0, "Albums");
-    qmlRegisterType<FoldersModel>(VVAVE_URI, 1, 0, "Folders");
-
     qmlRegisterType<Player>(VVAVE_URI, 1, 0, "Player");
     qmlRegisterType<Playlist>(VVAVE_URI, 1, 0, "Playlist");
     qmlRegisterType<Mpris2>(VVAVE_URI, 1, 0, "Mpris2");

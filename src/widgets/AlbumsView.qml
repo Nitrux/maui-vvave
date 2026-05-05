@@ -3,8 +3,8 @@ import QtQuick.Controls
 
 import org.mauikit.controls as Maui
 
-import "BabeGrid"
-import "BabeTable"
+import "VVaveGrid"
+import "VVaveTable"
 
 import "../db/Queries.js" as Q
 import "../utils/Player.js" as Player
@@ -12,6 +12,7 @@ import "../utils/Player.js" as Player
 StackView
 {
     id: control
+    background: null
 
     property alias list : albumsViewGrid.list
 
@@ -24,7 +25,7 @@ StackView
 
     property Flickable flickable : currentItem.flickable
 
-    initialItem: BabeGrid
+    initialItem: VVaveGrid
     {
         id: albumsViewGrid
         holder.emoji: "qrc:/assets/dialog-information.svg"
@@ -58,7 +59,7 @@ StackView
     {
         id: _tracksTableComponent
 
-        BabeTable
+        VVaveTable
         {
             list.query: control.currentQuery
             trackNumberVisible: true
@@ -136,4 +137,3 @@ StackView
             return null
     }
 }
-

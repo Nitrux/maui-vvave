@@ -23,7 +23,6 @@ set(vvave_SRCS
     models/tracks/tracksmodel.cpp
     models/playlists/playlistsmodel.cpp
     models/albums/albumsmodel.cpp
-    models/folders/foldersmodel.cpp
     kde/mpris2/mpris2.cpp
     kde/server.cpp)
 
@@ -52,22 +51,18 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     widgets/MainPlaylist/MainPlaylist.qml
     widgets/PlaylistsView/PlaylistsView.qml
     widgets/InfoView/InfoView.qml
-    widgets/InfoView/LyricsView.qml
     widgets/PlaylistsView/PlaylistsViewModel.qml
     widgets/FloatingDisk.qml
     widgets/SelectionBar.qml
     widgets/FocusView.qml
     widgets/SettingsView/SettingsDialog.qml
     widgets/SettingsView/ShortcutsDialog.qml
-    widgets/FoldersView/FoldersView.qml
     widgets/MetadataDialog.qml
-    widgets/BabeTable/TableDelegate.qml
-    widgets/BabeTable/TableMenu.qml
-    widgets/BabeTable/BabeTable.qml
-    widgets/BabeGrid/BabeGrid.qml
+    widgets/VVaveTable/TableDelegate.qml
+    widgets/VVaveTable/TableMenu.qml
+    widgets/VVaveTable/VVaveTable.qml
+    widgets/VVaveGrid/VVaveGrid.qml
     widgets/MiniMode.qml
-    widgets/TracksGroup.qml
-    widgets/SleepTimerDialog.qml
 
     utils/Player.js
     db/Queries.js)

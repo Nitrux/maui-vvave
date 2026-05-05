@@ -4,7 +4,7 @@ import QtQuick.Controls
 import org.mauikit.controls as Maui
 
 import "../utils/Player.js" as Player
-import "BabeTable"
+import "VVaveTable"
 
 Maui.SelectionBar
 {

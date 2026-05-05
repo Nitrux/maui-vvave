@@ -14,7 +14,7 @@ import "../utils/Player.js" as Player
 import "../db/Queries.js" as Q
 
 import "../widgets/InfoView"
-import "BabeTable"
+import "VVaveTable"
 
 StackView
 {
@@ -32,74 +32,7 @@ StackView
                                                currentTrack && currentTrack.artist ? currentTrack.artist : "",
                                                currentTrack && currentTrack.album ? currentTrack.album : "")
 
-    background: Rectangle
-    {
-        color: Maui.Theme.backgroundColor
-
-        Behavior on color
-        {
-            Maui.ColorTransition{}
-        }
-
-        onColorChanged:
-        {
-            setAndroidStatusBarColor()
-        }
-
-        Loader
-        {
-            anchors.fill: parent
-            active: Maui.Style.enableEffects
-            asynchronous: true
-
-            sourceComponent: Item
-            {
-                Image
-                {
-                    id: artworkBg
-                    visible: false
-                    height: parent.height *3
-                    width: parent.width *3
-                    anchors.centerIn: parent
-
-                    sourceSize.width: 400
-                    sourceSize.height: 200
-
-                    fillMode: Image.PreserveAspectCrop
-
-                    asynchronous: true
-                    cache: true
-
-                    source: "image://artwork/album:"
-                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
-                            + ":"
-                            + (currentTrack && currentTrack.album ? currentTrack.album : "")
-                }
-
-                MultiEffect
-                {
-                    id: fastBlur
-                    visible: GraphicsInfo.api !== GraphicsInfo.Software
-                    height: artworkBg.height
-                    width: artworkBg.width
-                    anchors.centerIn: parent
-                    blurEnabled: true
-                    source: artworkBg
-                    blur: 1.0
-                    blurMax: 64
-                    brightness: 0.4
-                    saturation: 0.2
-                }
-
-                Rectangle
-                {
-                    anchors.fill: artworkBg
-                    color: Maui.Theme.backgroundColor
-                    opacity: 0.7
-                }
-            }
-        }
-    }
+    background: null
 
     Component
     {
@@ -157,7 +90,7 @@ StackView
             background: null
             headerContainer.margins: Maui.Style.contentMargins
             headBar.background: null
-            headBar.leftContent: Loader
+            headBar.rightContent: Loader
             {
                 asynchronous: true
                 sourceComponent: _mainMenuComponent
@@ -199,7 +132,7 @@ StackView
 
                 onClosed: _filterField.clear()
 
-                BabeTable
+                VVaveTable
                 {
                     id: _list
                     headBar.visible: false
@@ -437,7 +370,7 @@ StackView
                 Loader
                 {
                     asynchronous: true
-                    active: settings.volumeControl
+                    active: true
                     Layout.fillWidth: true
                     Layout.maximumWidth: 300
 

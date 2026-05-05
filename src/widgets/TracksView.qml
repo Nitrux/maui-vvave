@@ -4,13 +4,13 @@ import QtQuick.Controls
 import org.mauikit.controls as Maui
 import org.maui.vvave as Vvave
 
-import "BabeTable"
-import "BabeGrid"
+import "VVaveTable"
+import "VVaveGrid"
 
 import "../db/Queries.js" as Q
 import "../utils/Player.js" as Player
 
-BabeTable
+VVaveTable
 {
     trackNumberVisible: false
     coverArtVisible: false

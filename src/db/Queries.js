@@ -33,7 +33,7 @@ var GET = {
     neverPlayedTracks: "select t.* from tracks t inner join albums al on t.album = al.album and t.artist = al.artist where t.count <= 1 order by RANDOM() limit 20",
     neverPlayedTracks_: "select t.* from (select * from tracks order by strftime(\"%s\", adddate) asc) t inner join albums al on t.album = al.album and t.artist = al.artist where t.count <= 1 order by t.title asc limit 100",
 
-    babedTracks: "#favs",
+    vvavedTracks: "#favs",
     playlistTracks_ : "#%1",
 
     genres: "select distinct genre as tag from tracks",

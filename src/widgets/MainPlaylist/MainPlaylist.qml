@@ -12,7 +12,7 @@ import org.maui.vvave as Vvave
 import "../../utils/Player.js" as Player
 import "../../db/Queries.js" as Q
 
-import "../BabeTable"
+import "../VVaveTable"
 
 Maui.Page
 {
@@ -28,13 +28,9 @@ Maui.Page
 
     headBar.visible: false
 
-    background: Rectangle
-    {
-        color: Maui.Theme.alternateBackgroundColor
-        radius: Maui.Style.radiusV
-    }
+    background: null
 
-    BabeTable
+    VVaveTable
     {
         id: table
         clip: true

@@ -9,6 +9,7 @@ import org.maui.vvave as Vvave
 Maui.Page
 {
     id: control
+    background: null
 
     Vvave.TrackInfo
     {

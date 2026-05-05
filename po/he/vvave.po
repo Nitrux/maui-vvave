@@ -28,7 +28,7 @@ msgstr "סידור והאזנה למוזיקה שלך."
 msgid "Developer"
 msgstr "מפתח"
 
-#: src/main.qml:331 src/main.qml:480 src/widgets/BabeTable/BabeTable.qml:158
+#: src/main.qml:331 src/main.qml:480 src/widgets/VVaveTable/VVaveTable.qml:158
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:61
 #: src/widgets/SelectionBar.qml:71
 #, kde-format
@@ -55,7 +55,7 @@ msgstr "לשאול לפני סגירה אם מתנגנת מוזיקה"
 msgid "Save current playlist session"
 msgstr "שמירת הפעלת רשימת הנגינה הנוכחית"
 
-#: src/main.qml:473 src/widgets/BabeTable/BabeTable.qml:151
+#: src/main.qml:473 src/widgets/VVaveTable/VVaveTable.qml:151
 #, kde-format
 msgid "Remove track"
 msgid_plural "Remove %1 tracks"
@@ -70,7 +70,7 @@ msgid ""
 "Are you sure you want to remove these files? This action can not be undone."
 msgstr "להסיר את הקבצים האלה? זאת פעולה בלתי הפיכה."
 
-#: src/main.qml:490 src/widgets/BabeTable/BabeTable.qml:171
+#: src/main.qml:490 src/widgets/VVaveTable/VVaveTable.qml:171
 #: src/widgets/SleepTimerDialog.qml:154
 #, kde-format
 msgid "Cancel"
@@ -204,7 +204,7 @@ msgstr "הוספת מקורות"
 msgid "This list is empty"
 msgstr "הרשימה ריקה"
 
-#: src/widgets/BabeGrid/BabeGrid.qml:47 src/widgets/BabeTable/BabeTable.qml:110
+#: src/widgets/VVaveGrid/VVaveGrid.qml:47 src/widgets/VVaveTable/VVaveTable.qml:110
 #: src/widgets/CloudView/CloudView.qml:24
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:94
 #, kde-format
@@ -215,86 +215,86 @@ msgstr[1] "סינון שני אלבומים"
 msgstr[2] "סינון %1 אלבומים"
 msgstr[3] "סינון %1 אלבומים"
 
-#: src/widgets/BabeTable/BabeTable.qml:76
+#: src/widgets/VVaveTable/VVaveTable.qml:76
 #, kde-format
 msgid "Shuffle Play"
 msgstr "השמעה מעורבבת"
 
-#: src/widgets/BabeTable/BabeTable.qml:83 src/widgets/TracksGroup.qml:47
+#: src/widgets/VVaveTable/VVaveTable.qml:83 src/widgets/TracksGroup.qml:47
 #, kde-format
 msgid "Play All"
 msgstr "להשמיע הכול"
 
-#: src/widgets/BabeTable/BabeTable.qml:90 src/widgets/TracksGroup.qml:55
+#: src/widgets/VVaveTable/VVaveTable.qml:90 src/widgets/TracksGroup.qml:55
 #, kde-format
 msgid "Append All"
 msgstr "הוספה של הכול לסוף"
 
-#: src/widgets/BabeTable/BabeTable.qml:152
+#: src/widgets/VVaveTable/VVaveTable.qml:152
 #, kde-format
 msgid ""
 "Are you sure you want to delete the file from your computer? This action can "
 "not be undone."
 msgstr "למחוק את הקובץ מהמחשב שלך? זאת פעולה בלתי הפיכה."
 
-#: src/widgets/BabeTable/BabeTable.qml:185 src/widgets/TracksGroup.qml:68
+#: src/widgets/VVaveTable/VVaveTable.qml:185 src/widgets/TracksGroup.qml:68
 #, kde-format
 msgid "Go to Artist"
 msgstr "מעבר לאומן/נית"
 
-#: src/widgets/BabeTable/BabeTable.qml:192 src/widgets/TracksGroup.qml:75
+#: src/widgets/VVaveTable/VVaveTable.qml:192 src/widgets/TracksGroup.qml:75
 #, kde-format
 msgid "Go to Album"
 msgstr "מעבר לאלבום"
 
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "Fav it"
 msgstr "הוספה למועדפים"
 
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "UnFav it"
 msgstr "הוצאה מהמועדפים"
 
-#: src/widgets/BabeTable/TableMenu.qml:46
+#: src/widgets/VVaveTable/TableMenu.qml:46
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:53
 #, kde-format
 msgid "Edit"
 msgstr "עריכה"
 
-#: src/widgets/BabeTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
+#: src/widgets/VVaveTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
 #: src/widgets/SelectionBar.qml:54
 #, kde-format
 msgid "Share"
 msgstr "שיתוף"
 
-#: src/widgets/BabeTable/TableMenu.qml:66
+#: src/widgets/VVaveTable/TableMenu.qml:66
 #, kde-format
 msgid "Add to '%1'"
 msgstr "הוספה אל ‚%1’"
 
-#: src/widgets/BabeTable/TableMenu.qml:76
+#: src/widgets/VVaveTable/TableMenu.qml:76
 #, kde-format
 msgid "Add to playlist"
 msgstr "הוספה לרשימת הנגינה"
 
-#: src/widgets/BabeTable/TableMenu.qml:86
+#: src/widgets/VVaveTable/TableMenu.qml:86
 #, kde-format
 msgid "Select"
 msgstr "בחירה"
 
-#: src/widgets/BabeTable/TableMenu.qml:99
+#: src/widgets/VVaveTable/TableMenu.qml:99
 #, kde-format
 msgid "Play Next"
 msgstr "לנגן את הבא"
 
-#: src/widgets/BabeTable/TableMenu.qml:124
+#: src/widgets/VVaveTable/TableMenu.qml:124
 #, kde-format
 msgid "Show in Folder"
 msgstr "הצגה בתיקייה"
 
-#: src/widgets/BabeTable/TableMenu.qml:150
+#: src/widgets/VVaveTable/TableMenu.qml:150
 #, kde-format
 msgid "Delete"
 msgstr "מחיקה"

@@ -29,6 +29,46 @@ import org.maui.vvave
 Maui.SettingsDialog
 {
     id: control
+    property var backendLabels: [i18n("Automatic")]
+    property var backendValues: [""]
+    readonly property var sleepLabels: [
+        i18n("Disabled"),
+        i18n("15 minutes"),
+        i18n("30 minutes"),
+        i18n("60 minutes"),
+        i18n("End of current track"),
+        i18n("End of playlist")
+    ]
+    readonly property var sleepValues: [
+        "none",
+        "15m",
+        "30m",
+        "60m",
+        "eot",
+        "eop"
+    ]
+
+    function updateBackendChoices()
+    {
+        const labels = [i18n("Automatic")]
+        const values = [""]
+        const seen = new Set()
+        for (let i = 0; i < player.outputs.length; ++i) {
+            const backend = player.outputs[i]
+            const text = String(backend).trim()
+            if (!text.length || seen.has(text))
+                continue
+
+            seen.add(text)
+            labels.push(text.charAt(0).toUpperCase() + text.slice(1))
+            values.push(text)
+        }
+
+        backendLabels = labels
+        backendValues = values
+    }
+
+    Component.onCompleted: updateBackendChoices()
 
     Maui.InfoDialog
     {
@@ -53,59 +93,48 @@ Maui.SettingsDialog
     Maui.SectionGroup
     {
         title: i18n("Playback")
-//        description: i18n("Configure the playback behavior.")
 
         Maui.FlexSectionItem
         {
-            label1.text: i18n("Save & Restore Session")
-            label2.text: i18n("Resume the last session playlist.")
-
-            Switch
-            {
-                checkable: true
-                checked: playlist.autoResume
-                onToggled: playlist.autoResume = !playlist.autoResume
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Volume")
-            label2.text: i18n("Show volume controls.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.volumeControl
-                onToggled: settings.volumeControl = !settings.volumeControl
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Exiting")
-            label2.text: i18n("Ask before closing if music is playing")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.askBeforeClose
-                onToggled: settings.askBeforeClose = !settings.askBeforeClose
-            }
-        }
-
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Output")
-            label2.text: i18n("Preferred output source")
+            label1.text: i18n("Playback Backend")
+            label2.text: (_outputCombo.currentIndex > 0 && _outputCombo.currentText.length)
+                         ? i18n("Current backend: %1. Use Automatic to let Vvave pick the best available backend.", _outputCombo.currentText)
+                         : i18n("Vvave automatically selects the best available playback backend.")
 
             ComboBox 
             {
-                model: player.outputs
-                onActivated: player.preferredOutput = currentValue
-                // Set the initial currentIndex to the value stored in the backend.
-                Component.onCompleted: currentIndex = indexOfValue(player.preferredOutput)
+                id: _outputCombo
+                model: control.backendLabels
+                onActivated:
+                {
+                    player.preferredOutput = control.backendValues[currentIndex]
+                }
+                Component.onCompleted:
+                {
+                    control.updateBackendChoices()
+                    currentIndex = 0
+                    if (player.preferredOutput !== "")
+                        player.preferredOutput = ""
+                }
+            }
+        }
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Sleep Timer")
+            label2.text: i18n("Stop playback after a selected amount of time or when the playlist finishes.")
+
+            ComboBox
+            {
+                id: _sleepOptionCombo
+                model: control.sleepLabels
+                Component.onCompleted:
+                {
+                    const index = Math.max(0, control.sleepValues.indexOf(settings.sleepOption))
+                    currentIndex = index
+                }
+
+                onActivated: setSleepTimer(control.sleepValues[currentIndex])
             }
         }
     }
@@ -128,18 +157,6 @@ Maui.SettingsDialog
             }
         }
 
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Auto Scan")
-            label2.text: i18n("Scan all the music sources on startup to keep your collection up to date.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.autoScan
-                onToggled: settings.autoScan = !settings.autoScan
-            }
-        }
     }
 
     Maui.SectionGroup
@@ -250,12 +267,6 @@ Maui.SettingsDialog
                 }
             }
 
-            Button
-            {
-                Layout.fillWidth: true
-                text: i18n("Scan now")
-                onClicked: Vvave.rescan()
-            }
         }
     }
 

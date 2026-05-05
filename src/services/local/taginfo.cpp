@@ -1,5 +1,5 @@
 /*
-   Babe - tiny music player
+   Vvave - tiny music player
    Copyright (C) 2017  Camilo Higuita
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

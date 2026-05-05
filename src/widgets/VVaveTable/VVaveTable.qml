@@ -14,6 +14,7 @@ import "../../widgets"
 Maui.Page
 {
     id: control
+    background: null
 
     readonly property alias listBrowser : _listBrowser
     readonly property alias listView : _listBrowser.flickable

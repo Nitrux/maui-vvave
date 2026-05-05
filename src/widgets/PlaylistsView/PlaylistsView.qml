@@ -6,7 +6,7 @@ import org.mauikit.filebrowsing as FB
 
 import org.maui.vvave as Vvave
 
-import "../BabeTable"
+import "../VVaveTable"
 
 import "../../db/Queries.js" as Q
 import "../../utils/Player.js" as Player
@@ -14,6 +14,7 @@ import "../../utils/Player.js" as Player
 StackView
 {
     id: control
+    background: null
 
     property string playlistQuery
 
@@ -35,7 +36,7 @@ StackView
     {
         id: _filterListComponent
 
-        BabeTable
+        VVaveTable
         {
             id: filterList
 
