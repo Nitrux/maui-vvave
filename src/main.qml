@@ -14,7 +14,6 @@ import "widgets"
 import "widgets/PlaylistsView"
 import "widgets/MainPlaylist"
 import "widgets/SettingsView"
-import "widgets/CloudView"
 import "widgets/FoldersView"
 
 import "utils/Player.js" as Player
@@ -24,7 +23,7 @@ Maui.ApplicationWindow
     id: root
 
     visible: !miniMode
-    title: currentTrack.url ? currentTrack.title + " - " +  currentTrack.artist + " | " + currentTrack.album : ""
+    title: (currentTrack && currentTrack.url) ? currentTrack.title + " - " +  currentTrack.artist + " | " + currentTrack.album : ""
 
     Maui.Style.styleType: focusView ? Maui.Style.Adaptive : undefined
 
@@ -53,8 +52,7 @@ Maui.ApplicationWindow
                                            albums: 1,
                                            artists: 2,
                                            playlists: 3,
-                                           folders: 4,
-                                           cloud: 5 })
+                                           folders: 4 })
 
     property string syncPlaylist: ""
     property bool sync: false
@@ -215,7 +213,7 @@ Maui.ApplicationWindow
         {
             readonly property string dialogLabel: "Go Back"
             readonly property string dialogCategory: "Navigation"
-            sequence: StandardKey.Back
+            sequences: [StandardKey.Back]
             onActivated: {
                 // I couldn't get Keys.onShortcutOverride in each view to work. I guess this is more dynamic anyway.
                 let func = getGoBackFunc()
@@ -725,7 +723,17 @@ Maui.ApplicationWindow
                     footerMargins: headerMargins
 
                     floatingFooter: true
-                    flickable: swipeView.currentItem.flickable || swipeView.currentItem.item.flickable
+                    flickable:
+                    {
+                        const current = swipeView.currentItem
+                        if (!current)
+                            return null
+
+                        if (current.flickable)
+                            return current.flickable
+
+                        return current.item ? current.item.flickable : null
+                    }
                     altHeader: Maui.Handy.isMobile
                     Maui.Controls.showCSD: true
                     background: null
@@ -740,7 +748,7 @@ Maui.ApplicationWindow
                     {
                         id: _selectionBar
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: Math.min(parent.width-(Maui.Style.space.medium*2), implicitWidth)
+                        width: parent ? Math.min(parent.width - (Maui.Style.space.medium * 2), implicitWidth) : implicitWidth
 
                         maxListHeight: swipeView.height - Maui.Style.space.medium
                         display: ToolButton.IconOnly
@@ -857,6 +865,9 @@ Maui.ApplicationWindow
 
                     function getFilterField() : Item
                     {
+                        if (!currentItem || !currentItem.item || !currentItem.item.getFilterField)
+                            return null
+
                         return currentItem.item.getFilterField()
                     }
 
@@ -865,6 +876,9 @@ Maui.ApplicationWindow
                           */
                     function getGoBackFunc()
                     {
+                        if (!currentItem || !currentItem.item)
+                            return null
+
                         return 'getGoBackFunc' in currentItem.item ? currentItem.item.getGoBackFunc() : null
                     }
                 }
@@ -913,7 +927,8 @@ Maui.ApplicationWindow
             _stackView.pop()
         }
 
-        _stackView.currentItem.forceActiveFocus()
+        if(_stackView.currentItem)
+            _stackView.currentItem.forceActiveFocus()
     }
 
     function toggleMiniMode()

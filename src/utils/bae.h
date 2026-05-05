@@ -80,14 +80,8 @@ static const DB KEYMAP = {{KEY::URL, "url"},
                           {KEY::COMMENT, "comment"},
                           {KEY::SQL, "sql"}};
 
-
-#ifdef Q_OS_ANDROID
-static const QString CollectionDBPath = QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/vvave/").toLocalFile();
-const static QUrl CachePath = QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/vvave/");
-#else
 static const QString CollectionDBPath = QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/vvave/").toLocalFile();
 const static QUrl CachePath = QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/vvave/");
-#endif
 
 const static QString DBName = QStringLiteral("collection_v2.db");
 const static QStringList defaultSources = QStringList() << FMStatic::MusicPath << FMStatic::DownloadsPath;

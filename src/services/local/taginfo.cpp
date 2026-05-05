@@ -20,6 +20,7 @@
 
 #include <taglib/fileref.h>
 #include <taglib/tag.h>
+#include <taglib/taglib.h>
 
 using namespace BAE;
 
@@ -95,7 +96,15 @@ void TagInfo::setFile(const QString &url)
 
 int TagInfo::getDuration() const
 {
-    return file->audioProperties()->length();
+    const auto properties = file->audioProperties();
+    if (!properties)
+        return 0;
+
+#if TAGLIB_MAJOR_VERSION >= 2
+    return properties->lengthInSeconds();
+#else
+    return properties->length();
+#endif
 }
 
 QString TagInfo::getComment() const

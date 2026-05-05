@@ -176,7 +176,14 @@ Maui.Page
                         interactive: true
                         fillMode: Image.PreserveAspectCrop
 
-                        images: ["image://artwork/album:"+currentTrack.artist + ":"+ currentTrack.album, "image://artwork/artist:"+currentTrack.artist]
+                        images: [
+                            "image://artwork/album:"
+                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + ":"
+                            + (currentTrack && currentTrack.album ? currentTrack.album : ""),
+                            "image://artwork/artist:"
+                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                        ]
                     }
 
                     MouseArea

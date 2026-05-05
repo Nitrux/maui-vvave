@@ -229,11 +229,6 @@ Maui.Page
             dialog.open()
         }
 
-        onCopyToClicked:
-        {
-            cloudView.list.upload(contextMenu.index)
-        }
-
         onShareClicked:
         {
             const url = listModel.get(contextMenu.index).url

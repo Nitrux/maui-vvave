@@ -70,7 +70,6 @@ Maui.SelectionBar
         {
             text: i18n("Remove")
             icon.name: "edit-delete"
-            Maui.Theme.textColor: Maui.Theme.negativeTextColor
             onTriggered:
             {
                 var dialog = _removeDialogComponent.createObject(root)

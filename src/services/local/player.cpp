@@ -1,12 +1,6 @@
 #include "player.h"
 
-#include <MauiKit4/Accounts/mauiaccounts.h>
-
 #include <MauiKit4/Audio/mediaplayer.h>
-#include <QByteArrayView>
-
-#include <QNetworkRequest>
-#include <QThread>
 #include <QTime>
 
 #include "powermanagementinterface.h"
@@ -28,44 +22,6 @@ Player::Player(QObject *parent)
 
        Q_EMIT this->playingChanged();
    });
-}
-
-inline QNetworkRequest getOcsRequest(const QNetworkRequest &request)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    qDebug() << "FORMING THE REQUEST" << request.url();
-
-    // Read raw headers out of the provided request
-    QMap<QByteArray, QByteArray> rawHeaders;
-    const auto headerList = request.rawHeaderList();
-
-    for (const QByteArray &headerKey : headerList) {
-        rawHeaders.insert(headerKey, request.rawHeader(headerKey));
-    }
-
-    const auto account = FMH::toModel(MauiAccounts::instance()->getCurrentAccount());
-    //    const auto account = FMH::MODEL();
-
-    const QString concatenated = QString("%1:%2").arg(account[FMH::MODEL_KEY::USER], account[FMH::MODEL_KEY::PASSWORD]);
-    const QByteArray data = concatenated.toLocal8Bit().toBase64();
-    const auto headerData = QByteArrayView("Basic ") + QByteArrayView(data);
-
-    // Construct new QNetworkRequest with prepared header values
-    QNetworkRequest newRequest(request);
-
-    newRequest.setRawHeader(QString("Authorization").toLocal8Bit(), headerData);
-    newRequest.setRawHeader(QByteArrayLiteral("OCS-APIREQUEST"), QByteArrayLiteral("true"));
-    newRequest.setRawHeader(QByteArrayLiteral("Cache-Control"), QByteArrayLiteral("public"));
-    newRequest.setRawHeader(QByteArrayLiteral("Content-Description"), QByteArrayLiteral("File Transfer"));
-
-    newRequest.setHeader(QNetworkRequest::ContentTypeHeader, "audio/mpeg");
-    newRequest.setAttribute(QNetworkRequest::CacheSaveControlAttribute, true);
-    newRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
-
-    qDebug() << "headers" << newRequest.rawHeaderList() << newRequest.url();
-
-    return newRequest;
 }
 
 

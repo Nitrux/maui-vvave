@@ -28,7 +28,9 @@ StackView
     readonly property string progressTimeLabel: player.formatTime_ms(player.elapsed)
     readonly property string durationTimeLabel: player.formatTime_ms(player.duration)
 
-    Maui.Style.adaptiveColorSchemeSource : Vvave.Vvave.artworkUrl(currentTrack.artist, currentTrack.album)
+    Maui.Style.adaptiveColorSchemeSource : Vvave.Vvave.artworkUrl(
+                                               currentTrack && currentTrack.artist ? currentTrack.artist : "",
+                                               currentTrack && currentTrack.album ? currentTrack.album : "")
 
     background: Rectangle
     {
@@ -68,7 +70,10 @@ StackView
                     asynchronous: true
                     cache: true
 
-                    source: "image://artwork/album:"+currentTrack.artist + ":" + currentTrack.album
+                    source: "image://artwork/album:"
+                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + ":"
+                            + (currentTrack && currentTrack.album ? currentTrack.album : "")
                 }
 
                 MultiEffect
@@ -141,7 +146,8 @@ StackView
 
         function forceActiveFocus()
         {
-            item.forceActiveFocus()
+            if(item)
+                item.forceActiveFocus()
         }
 
         sourceComponent: Maui.Page
@@ -489,7 +495,7 @@ StackView
                             FB.FavButton
                             {
                                 enabled: root.currentTrack
-                                url: root.currentTrack.url
+                                url: root.currentTrack ? (root.currentTrack.url || "") : ""
                             }
 
                             ToolButton
@@ -528,7 +534,11 @@ StackView
                                 display: ToolButton.IconOnly
                                 flat: true
                                 icon.name: "document-share"
-                                onClicked: Maui.Platform.shareFiles([currentTrack.url])
+                                onClicked:
+                                {
+                                    if(currentTrack && currentTrack.url)
+                                        Maui.Platform.shareFiles([currentTrack.url])
+                                }
                             }
 
                             ToolButton
@@ -537,7 +547,11 @@ StackView
                                 display: ToolButton.IconOnly
                                 flat: true
                                 icon.name: "tag"
-                                onClicked: tagUrls([currentTrack.url])
+                                onClicked:
+                                {
+                                    if(currentTrack && currentTrack.url)
+                                        tagUrls([currentTrack.url])
+                                }
                             }
                         }
                     }
@@ -608,7 +622,8 @@ StackView
 
     function forceActiveFocus()
     {
-        control.currentItem.forceActiveFocus()
+        if(control.currentItem)
+            control.currentItem.forceActiveFocus()
     }
 
     Component.onCompleted:
@@ -618,6 +633,6 @@ StackView
 
     function getFilterField() : Item
     {
-        return control.loader.item.filterField
+        return (control.loader && control.loader.item) ? control.loader.item.filterField : null
     }
 }

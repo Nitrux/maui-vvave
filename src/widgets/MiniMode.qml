@@ -45,7 +45,10 @@ Maui.BaseWindow
             Image
             {
                 anchors.fill: parent
-                source: "image://artwork/album:"+currentTrack.artist + ":"+ currentTrack.album
+                source: "image://artwork/album:"
+                        + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                        + ":"
+                        + (currentTrack && currentTrack.album ? currentTrack.album : "")
                 fillMode: Image.PreserveAspectFit
             }
 
@@ -81,7 +84,7 @@ Maui.BaseWindow
                     {
                         Maui.Theme.colorSet: Maui.Theme.Complementary
                         Maui.Theme.inherit: false
-                        url: root.currentTrack.url
+                        url: root.currentTrack ? (root.currentTrack.url || "") : ""
                         icon.width: Maui.Style.iconSizes.big
                         icon.height: Maui.Style.iconSizes.big
                     }

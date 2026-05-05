@@ -18,13 +18,6 @@
 #include "pulpo.h"
 #include "services/lastfmService.h"
 #include "services/spotifyService.h"
-//#include "services/lyricwikiaService.h"
-//#include "services/geniusService.h"
-//#include "services/musicbrainzService.h"
-//#include "services/deezerService.h"
-
-//#include "qgumbodocument.h"p
-//#include "qgumbonode.h"
 
 Pulpo::Pulpo(QObject *parent)
     : QObject(parent)

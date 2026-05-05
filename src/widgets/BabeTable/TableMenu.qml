@@ -10,7 +10,7 @@ Maui.ContextualMenu
 
     property bool fav : false
     property int index
-    property var titleInfo
+    property var titleInfo: ({})
 
     signal favClicked()
     signal queueClicked()
@@ -20,14 +20,13 @@ Maui.ContextualMenu
     signal shareClicked()
     signal selectClicked()
     signal infoClicked()
-    signal copyToClicked()
     signal deleteClicked()
 
     property alias menuItem : control.contentData
 
-    title: control.titleInfo.title
-    Maui.Controls.subtitle: control.titleInfo.artist
-    icon.source: "image://artwork/album:"+ control.titleInfo.artist+":"+control.titleInfo.album
+    title: (control.titleInfo && control.titleInfo.title) ? control.titleInfo.title : ""
+    Maui.Controls.subtitle: (control.titleInfo && control.titleInfo.artist) ? control.titleInfo.artist : ""
+    icon.source: "image://artwork/album:" + ((control.titleInfo && control.titleInfo.artist) ? control.titleInfo.artist : "") + ":" + ((control.titleInfo && control.titleInfo.album) ? control.titleInfo.album : "")
 
     Maui.MenuItemActionRow
     {
@@ -67,7 +66,8 @@ Maui.ContextualMenu
         icon.name: "tag"
         onTriggered:
         {
-            FB.Tagging.tagUrl(control.titleInfo.url, root.lastUsedPlaylist)
+            if(control.titleInfo && control.titleInfo.url)
+                FB.Tagging.tagUrl(control.titleInfo.url, root.lastUsedPlaylist)
         }
     }
 
@@ -107,17 +107,6 @@ Maui.ContextualMenu
     MenuSeparator{}
 
 
-
-    //    MenuItem
-    //    {
-    //        enabled: Maui.App.handleAccounts
-    //        text: i18n("Copy to cloud")
-    //        onTriggered:
-    //        {
-    //            copyToClicked()
-    //            close()
-    //        }
-    //    }
 
     MenuItem
     {

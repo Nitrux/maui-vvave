@@ -5,18 +5,11 @@
 
 remove_definitions(-DQT_NO_CAST_FROM_ASCII -DQT_STRICT_ITERATORS -DQT_NO_CAST_FROM_BYTEARRAY)
 
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/services/web)
-
 set(vvave_SRCS
     main.cpp
     vvave.cpp
-    #    pulpo/services/geniusService.cpp
-    #    pulpo/services/deezerService.cpp
     pulpo/services/lastfmService.cpp
-    #    pulpo/services/lyricwikiaService.cpp
     pulpo/services/spotifyService.cpp
-    #    pulpo/services/musicbrainzService.cpp
     pulpo/pulpo.cpp
     pulpo/service.cpp
     services/local/taginfo.cpp
@@ -26,14 +19,11 @@ set(vvave_SRCS
     services/local/trackinfo.cpp
     services/local/metadataeditor.cpp
     services/local/powermanagementinterface.cpp
-    # services/web/NextCloud/nextmusic.cpp
-    # services/web/abstractmusicprovider.cpp
     db/collectionDB.cpp
     models/tracks/tracksmodel.cpp
     models/playlists/playlistsmodel.cpp
     models/albums/albumsmodel.cpp
     models/folders/foldersmodel.cpp
-    # models/cloud/cloud.cpp
     kde/mpris2/mpris2.cpp
     kde/server.cpp)
 
@@ -54,6 +44,7 @@ set_source_files_properties(db/Queries.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TR
 
 qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     NO_PLUGIN
+    NO_IMPORT_SCAN
     QML_FILES
     main.qml
     widgets/TracksView.qml
@@ -64,7 +55,6 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     widgets/InfoView/LyricsView.qml
     widgets/PlaylistsView/PlaylistsViewModel.qml
     widgets/FloatingDisk.qml
-    widgets/CloudView/CloudView.qml
     widgets/SelectionBar.qml
     widgets/FocusView.qml
     widgets/SettingsView/SettingsDialog.qml
@@ -118,5 +108,3 @@ ${Taglib_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES assets/vvave.svg DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps)
-
-qt_finalize_target(${PROJECT_NAME})

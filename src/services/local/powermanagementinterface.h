@@ -71,10 +71,6 @@ private:
 
     void uninhibitSleepGnomeWorkspace();
 
-    void inhibitSleepWindowsWorkspace();
-
-    void uninhibitSleepWindowsWorkspace();
-
     std::unique_ptr<PowerManagementInterfacePrivate> d;
 
 };

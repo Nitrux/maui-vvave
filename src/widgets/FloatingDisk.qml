@@ -160,7 +160,10 @@ Loader
             {
                 id: _img
                 anchors.fill: parent
-                source: "image://artwork/album:"+currentTrack.artist + ":"+ currentTrack.album
+                source: "image://artwork/album:"
+                        + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                        + ":"
+                        + (currentTrack && currentTrack.album ? currentTrack.album : "")
                 // verticalAlignment:  Image.AlignTop
                 // fillMode: Image.PreserveAspectFit
 
@@ -215,4 +218,3 @@ Loader
         }
     }
 }
-
