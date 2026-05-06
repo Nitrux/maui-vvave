@@ -279,13 +279,14 @@ Maui.ApplicationWindow
         category: "Settings"
         property bool fetchArtwork: true
         property bool focusViewDefault: false
-        property bool showArtwork: false
         property bool showTitles: true
         property string sleepOption : "none"
         property bool closeAfterSleep: false
         property double volume: 1.0
         property string preferredOutput: ""
         property bool preferredOutputUserSet: false
+
+        onFetchArtworkChanged: Vvave.fetchArtwork = fetchArtwork
     }
 
     Mpris2

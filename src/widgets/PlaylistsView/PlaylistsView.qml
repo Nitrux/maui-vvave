@@ -46,7 +46,7 @@ StackView
 
             signal removeFromPlaylist(string url)
 
-            coverArtVisible: settings.showArtwork
+            coverArtVisible: settings.fetchArtwork
 
             list.query: control.playlistQuery
             showTitle: false

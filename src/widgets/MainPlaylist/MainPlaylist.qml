@@ -294,7 +294,7 @@ Maui.Page
             Drag.source: delegate
 
             number : false
-            coverArt : settings.showArtwork
+            coverArt : settings.fetchArtwork
             draggable: true
             checkable: false
             checked: false

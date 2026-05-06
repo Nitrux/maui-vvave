@@ -160,22 +160,6 @@ Maui.SettingsDialog
 
         Maui.FlexSectionItem
         {
-            label1.text: i18n("Artwork")
-            label2.text: i18n("Show the cover artwork for the tracks.")
-
-            Switch
-            {
-                Layout.fillHeight: true
-                checked: settings.showArtwork
-                onToggled:
-                {
-                    settings.showArtwork = !settings.showArtwork
-                }
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
             label1.text: i18n("Titles")
             label2.text: i18n("Show the title of albums and artists in the grid view.")
 
@@ -191,14 +175,14 @@ Maui.SettingsDialog
         }
         Maui.FlexSectionItem
         {
-            label1.text: i18n("Fetch Artwork")
-            label2.text: i18n("Gathers album and artists artworks from online services: LastFM, Spotify, MusicBrainz, iTunes, Genius, and others.")
+            label1.text: i18n("Artwork")
+            label2.text: i18n("Show artwork and fetch missing album and artist covers from online services.")
 
             Switch
             {
                 checkable: true
                 checked: settings.fetchArtwork
-                onToggled:  settings.fetchArtwork = !settings.fetchArtwork
+                onToggled: settings.fetchArtwork = !settings.fetchArtwork
             }
         }
     }
@@ -215,6 +199,7 @@ Maui.SettingsDialog
             ComboBox
             {
                 id: _sleepOptionCombo
+                implicitWidth: 190
                 model: control.sleepLabels
                 Component.onCompleted:
                 {

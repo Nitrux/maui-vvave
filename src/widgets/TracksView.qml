@@ -408,18 +408,6 @@ VVaveTable
             }
 
             Item { Layout.fillWidth: true }
-
-            ToolButton
-            {
-                visible: rowDelegate.hovered
-                icon.name: "list-add"
-                flat: true
-                onClicked:
-                {
-                    currentIndex = index
-                    appendTrack(index)
-                }
-            }
         }
 
         onClicked:

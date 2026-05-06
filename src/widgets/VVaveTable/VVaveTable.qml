@@ -214,61 +214,31 @@ Maui.Page
     {
         id: contextMenu
 
-        MenuSeparator {}
-
-        MenuItem
-        {
-            text: i18n("Go to Artist")
-            icon.name: "view-media-artist"
-            onTriggered: goToArtist(listModel.get(control.currentIndex).artist)
-        }
-
-        MenuItem
-        {
-            text: i18n("Go to Album")
-            icon.name: "view-media-album-cover"
-            onTriggered:
-            {
-                let item = listModel.get(control.currentIndex)
-                goToAlbum(item.artist, item.album)
-            }
-        }
-
-        onFavClicked:
-        {
-            listModel.list.fav(listModel.mappedToSource(contextMenu.index), !FB.Tagging.isFav(listModel.get(contextMenu.index).url))
-        }
-
         onQueueClicked: Player.queueTracks([listModel.get(contextMenu.index)])
 
-        onSaveToClicked:
+        onGoToArtistClicked: goToArtist(listModel.get(control.currentIndex).artist)
+
+        onGoToAlbumClicked:
         {
-            tagUrls(filterSelection(listModel.get(contextMenu.index).url))
+            let item = listModel.get(control.currentIndex)
+            goToAlbum(item.artist, item.album)
         }
 
-        onOpenWithClicked: FB.FM.openLocation(filterSelection(listModel.get(contextMenu.index).url))
+        onCopyPathClicked:
+        {
+            const item = listModel.get(contextMenu.index)
+            if (!item || !item.url)
+                return
+
+            const raw = String(item.url)
+            const path = raw.startsWith("file://") ? decodeURIComponent(raw.replace("file://", "")) : raw
+            Maui.Handy.copyTextToClipboard(path)
+        }
 
         onDeleteClicked:
         {
             var dialog = _removeDialogComponent.createObject(control, ({'urls' : filterSelection(listModel.get(contextMenu.index).url)}))
             dialog.open()
-        }
-
-        onInfoClicked:
-        {
-            //            infoView.show(listModel.get(control.currentIndex))
-        }
-
-        onEditClicked:
-        {
-            var dialog = _metadataDialogComponent.createObject(control, ({'index': contextMenu.index}))
-            dialog.open()
-        }
-
-        onShareClicked:
-        {
-            const url = listModel.get(contextMenu.index).url
-            Maui.Platform.shareFiles([url])
         }
     }
 
@@ -423,7 +393,6 @@ Maui.Page
     {
         currentIndex = index
         contextMenu.index = index
-        contextMenu.fav = FB.Tagging.isFav(listModel.get(contextMenu.index).url)
         contextMenu.titleInfo = listModel.get(contextMenu.index)
         contextMenu.show()
         rowPressed(index)
