@@ -45,6 +45,77 @@ Maui.SettingsDialog
         "eot",
         "eop"
     ]
+    property var outputOptionValues: []
+    property var outputOptionLabels: []
+
+    function backendDisplayName(shortName)
+    {
+        const value = String(shortName || "")
+        const key = value.toLowerCase()
+
+        switch (key)
+        {
+        case "pipewire":
+            return "PipeWire"
+        case "pulse":
+        case "pulseaudio":
+            return "PulseAudio"
+        case "alsa":
+            return "ALSA"
+        case "jack":
+            return "JACK"
+        case "oss":
+            return "OSS"
+        default:
+            return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value
+        }
+    }
+
+    function refreshOutputOptions()
+    {
+        const outputs = player.outputs || []
+        const preferred = String(player.preferredOutput || "").toLowerCase()
+        const isRealtime = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "pipewire" || key === "pulse" || key === "pulseaudio" || key === "jack"
+        }
+        const isAutoSafe = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "null" || isRealtime(key)
+        }
+
+        let filtered = outputs.filter((name) =>
+            (String(name).toLowerCase() === preferred) ||
+            (isAutoSafe(name) && player.isOutputLikelyAvailable(name)))
+
+        const nullOutput = outputs.find((name) => String(name || "").toLowerCase() === "null")
+
+        // Never expose an empty selector: if detection is inconclusive,
+        // keep the safe fallback (Null) instead of showing every backend.
+        if (filtered.length === 0) {
+            filtered = nullOutput ? [nullOutput] : outputs.filter((name) => isAutoSafe(name))
+        }
+
+        outputOptionValues = filtered
+        outputOptionLabels = filtered.map((name) => backendDisplayName(name))
+    }
+
+    function outputIndexForValue(value)
+    {
+        const target = String(value || "").toLowerCase()
+        if (target.length === 0)
+            return -1
+
+        for (let i = 0; i < outputOptionValues.length; ++i)
+        {
+            if (String(outputOptionValues[i] || "").toLowerCase() === target)
+                return i
+        }
+
+        return -1
+    }
 
     Maui.InfoDialog
     {
@@ -86,6 +157,62 @@ Maui.SettingsDialog
                 }
 
                 onActivated: setSleepTimer(control.sleepValues[currentIndex])
+            }
+        }
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Audio Backend")
+            label2.text: i18n("Choose the audio output backend used for playback.")
+
+            ComboBox
+            {
+                id: _outputCombo
+                model: control.outputOptionLabels
+                enabled: model.length > 0
+                implicitWidth: 190
+
+                function syncCurrentIndex()
+                {
+                    const preferred = settings.preferredOutput.length > 0 ? settings.preferredOutput : player.preferredOutput
+                    const idx = outputIndexForValue(preferred)
+                    currentIndex = idx >= 0 ? idx : 0
+                }
+
+                Component.onCompleted:
+                {
+                    refreshOutputOptions()
+                    syncCurrentIndex()
+                }
+
+                onModelChanged: syncCurrentIndex()
+
+                onActivated:
+                {
+                    const selected = control.outputOptionValues[currentIndex]
+                    if (!selected || selected.length === 0)
+                        return
+
+                    player.preferredOutput = selected
+                    settings.preferredOutput = selected
+                    settings.preferredOutputUserSet = true
+                }
+            }
+
+            Connections
+            {
+                target: player
+
+                function onOutputsChanged()
+                {
+                    refreshOutputOptions()
+                    _outputCombo.syncCurrentIndex()
+                }
+
+                function onPreferredOutputChanged()
+                {
+                    _outputCombo.syncCurrentIndex()
+                }
             }
         }
     }

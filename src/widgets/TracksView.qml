@@ -20,6 +20,7 @@ VVaveTable
     trackNumberVisible: false
     coverArtVisible: false
     group: false
+    enforceDefaultTitleSort: true
 
     readonly property int rowPadding: Maui.Style.space.small
     readonly property int cellPadding: Maui.Style.space.medium

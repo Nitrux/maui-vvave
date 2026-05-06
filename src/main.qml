@@ -79,6 +79,7 @@ Maui.ApplicationWindow
 
     property bool selectionMode : false
     property bool _forceClose: false
+    property bool _outputSelectionReady: false
 
     /***************************************************/
     /******************** UI COLORS *******************/
@@ -87,7 +88,6 @@ Maui.ApplicationWindow
 
     /*HANDLE EVENTS*/
     signal contextualPlayNext()
-    property bool placeholderDebug: true
 
     onClosing: (close) =>
                {
@@ -98,12 +98,7 @@ Maui.ApplicationWindow
     onFocusViewChanged:
     {
         setAndroidStatusBarColor()
-        logPlaceholderState("focusViewChanged")
     }
-
-    onMainlistEmptyChanged: logPlaceholderState("mainlistEmptyChanged")
-    onWidthChanged: logPlaceholderState("windowWidthChanged", width)
-    onHeightChanged: logPlaceholderState("windowHeightChanged", height)
 
     function currentCategoryName() : string
     {
@@ -115,35 +110,6 @@ Maui.ApplicationWindow
         case viewsIndex.playlists: return "tags"
         default: return "unknown"
         }
-    }
-
-    function logPlaceholderState(event, details)
-    {
-        if (!placeholderDebug)
-            return
-
-        const currentView = resolveCurrentCategoryView()
-        const hasHolder = !!(currentView && currentView.holder)
-        const holderVisible = hasHolder ? currentView.holder.visible : false
-        const holderTitle = hasHolder && currentView.holder.title !== undefined ? currentView.holder.title : "<none>"
-        const viewCount = (currentView && currentView.count !== undefined) ? currentView.count : -1
-        const playlistCount = (mainPlaylist && mainPlaylist.listModel && mainPlaylist.listModel.list) ? mainPlaylist.listModel.list.count : -1
-
-        let msg = "[VVAVE_PLACEHOLDER] " + event
-                + " focusView=" + focusView
-                + " category=" + currentCategoryName()
-                + " hasCurrentView=" + (!!currentView)
-                + " hasHolder=" + hasHolder
-                + " holderVisible=" + holderVisible
-                + " holderTitle=" + holderTitle
-                + " viewCount=" + viewCount
-                + " mainPlaylistCount=" + playlistCount
-                + " mainlistEmpty=" + mainlistEmpty
-
-        if (details !== undefined && details !== null && details !== "")
-            msg += " details=" + details
-
-        console.log(msg)
     }
 
     function resolveCurrentCategoryView() : Item
@@ -318,6 +284,8 @@ Maui.ApplicationWindow
         property string sleepOption : "none"
         property bool closeAfterSleep: false
         property double volume: 1.0
+        property string preferredOutput: ""
+        property bool preferredOutputUserSet: false
     }
 
     Mpris2
@@ -339,9 +307,7 @@ Maui.ApplicationWindow
         Maui.Controls.status: Maui.Controls.Negative
         onTriggered:
         {
-            console.log("REMOVE TIU MSISING", mainPlaylist.table.currentIndex)
             mainPlaylist.table.list.removeMissing(mainPlaylist.table.currentIndex)
-            console.log("REMOVE TIU MSISING 2", mainPlaylist.table.currentIndex)
         }
     }
 
@@ -364,6 +330,14 @@ Maui.ApplicationWindow
     {
         id: player
         volume: settings.volume
+        onPreferredOutputChanged:
+        {
+            if (!root._outputSelectionReady)
+                return
+
+            if (settings.preferredOutput !== preferredOutput)
+                settings.preferredOutput = preferredOutput
+        }
         onFinished:
         {
             if (!mainlistEmpty)
@@ -475,7 +449,6 @@ Maui.ApplicationWindow
                 text: tag
                 onTriggered:
                 {
-                    console.log("Open playlist view", tag)
                     goToPlaylist(tag)
                 }
             }
@@ -689,7 +662,6 @@ Maui.ApplicationWindow
                 visible: StackView.status !== StackView.Inactive
                 onCurrentIndexChanged:
                 {
-                    logPlaceholderState("categoryChanged", currentIndex)
                 }
 
                 headerMargins: Maui.Style.contentMargins
@@ -884,10 +856,107 @@ Maui.ApplicationWindow
 
     Component.onCompleted:
     {
+        root._outputSelectionReady = false
+
         Qt.callLater(() => _sideBarView.sideBar.close())
-        Qt.callLater(() => {
-            logPlaceholderState("appCompleted")
-        })
+
+        const outputs = player.outputs
+        const findOutput = (name) =>
+        {
+            const target = String(name || "").toLowerCase()
+            if (target.length === 0)
+                return ""
+
+            for (const out of outputs)
+            {
+                if (String(out).toLowerCase() === target)
+                    return out
+            }
+
+            return ""
+        }
+
+        const isRealtimeOutput = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "pipewire" || key === "pulse" || key === "pulseaudio" || key === "jack"
+        }
+
+        const isAutoSelectable = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "null" || isRealtimeOutput(key)
+        }
+
+        let selectedOutput = ""
+        const bestRealtimeOutput = () =>
+        {
+            const preferredOrder = ["pipewire", "pulse", "pulseaudio", "jack"]
+            for (const name of preferredOrder)
+            {
+                const candidate = findOutput(name)
+                if (candidate.length > 0 && player.isOutputLikelyAvailable(candidate))
+                    return candidate
+            }
+            return ""
+        }
+
+        const saved = findOutput(settings.preferredOutput)
+        if (saved.length > 0 && player.isOutputLikelyAvailable(saved))
+        {
+            const savedKey = String(saved).toLowerCase()
+            const bestRealtime = bestRealtimeOutput()
+            const shouldAvoidStaleAlsa = !settings.preferredOutputUserSet && savedKey === "alsa" && bestRealtime.length > 0
+            const shouldIgnoreUnsafeSaved = !settings.preferredOutputUserSet && !isAutoSelectable(savedKey)
+            selectedOutput = shouldAvoidStaleAlsa || shouldIgnoreUnsafeSaved ? bestRealtime : saved
+        }
+
+        if (selectedOutput.length === 0 && String(settings.preferredOutput || "").length > 0)
+        {
+            const current = findOutput(player.preferredOutput)
+            if (current.length > 0 && player.isOutputLikelyAvailable(current) && isAutoSelectable(current))
+                selectedOutput = current
+        }
+
+        if (selectedOutput.length === 0)
+        {
+            selectedOutput = bestRealtimeOutput()
+        }
+
+        if (selectedOutput.length === 0)
+        {
+            const nullOutput = findOutput("null")
+            if (nullOutput.length > 0)
+                selectedOutput = nullOutput
+        }
+
+        if (selectedOutput.length === 0)
+        {
+            const preferredOrder = ["pipewire", "pulse", "pulseaudio", "jack", "null"]
+            for (const name of preferredOrder)
+            {
+                const candidate = findOutput(name)
+                if (candidate.length > 0)
+                {
+                    selectedOutput = candidate
+                    break
+                }
+            }
+        }
+
+        // If nothing could be reliably detected, keep audio disabled instead
+        // of forcing fragile backends like ALSA/OSS.
+        if (selectedOutput.length === 0)
+            selectedOutput = findOutput("null")
+
+        if (selectedOutput.length > 0)
+        {
+            player.preferredOutput = selectedOutput
+            settings.preferredOutput = selectedOutput
+        }
+
+        root._outputSelectionReady = true
+
         Vvave.fetchArtwork = settings.fetchArtwork
         Vvave.rescan()
     }
@@ -908,8 +977,6 @@ Maui.ApplicationWindow
 
         if(_stackView.currentItem)
             _stackView.currentItem.forceActiveFocus()
-
-        Qt.callLater(() => logPlaceholderState("toggleFocusView:after"))
     }
 
     function toggleMiniMode()
@@ -955,7 +1022,6 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = index
-        Qt.callLater(() => logPlaceholderState("showBrowserCategory", index))
     }
 
     function openShortcutsDialog()
@@ -1018,7 +1084,6 @@ Maui.ApplicationWindow
 
     function openFiles(urls)
     {
-        console.log("APPEND URLS", urls)
         Player.appendUrlsAt(urls, 0)
         Player.playAt(0)
     }
@@ -1051,7 +1116,6 @@ Maui.ApplicationWindow
 
     function setSleepTimer(option)
     {
-        console.log("Setting sleep timer to ", option)
         const timerFunc = (min) =>
                         {
             _timerLoader.active = true

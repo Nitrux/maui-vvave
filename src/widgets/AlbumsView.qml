@@ -120,7 +120,6 @@ StackView
             query = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
         }
 
-        console.log("GET ARTIST OR ALBUM BY", album, artist)
         control.currentQuery = query
     }
 

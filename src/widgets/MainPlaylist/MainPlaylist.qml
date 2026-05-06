@@ -364,12 +364,8 @@ Maui.Page
 
                 onContentDropped: (drop) =>
                                   {
-                                      console.log("Move or insert ", drop.source.mindex)
                                       if(typeof drop.source.mindex !== 'undefined')
                                       {
-                                          console.log("Move ", drop.source.mindex,
-                                                      delegate.mindex)
-
                                           root.playlistManager.move(drop.source.mindex, delegate.mindex)
 
                                       }else

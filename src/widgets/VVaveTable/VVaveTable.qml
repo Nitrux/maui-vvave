@@ -36,6 +36,8 @@ Maui.Page
     property bool allowMenu: true
     property bool showQuickActions : true
     property bool group : false
+    property bool enforceDefaultTitleSort: false
+    property bool _defaultSortApplied: false
 
     readonly property alias contextMenu : contextMenu
     property alias contextMenuItems : contextMenu.contentData
@@ -56,6 +58,34 @@ Maui.Page
             _searchField.forceActiveFocus()
     }
 
+    function applyAlphabeticalSort(index)
+    {
+        listModel.sort = "title"
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applyGenreSort(index)
+    {
+        listModel.sort = "genre"
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applyDefaultSortIfNeeded()
+    {
+        if (!enforceDefaultTitleSort || _defaultSortApplied || count <= 0)
+            return
+
+        // Force an actual resort on first population, even if bindings already
+        // hold title/ascending and would otherwise not emit changes.
+        listModel.sort = "title"
+        if (listModel.sortOrder === Qt.AscendingOrder)
+            listModel.sortOrder = Qt.DescendingOrder
+        listModel.sortOrder = Qt.AscendingOrder
+        _alphaSortCombo.currentIndex = 0
+        _genreSortCombo.currentIndex = 0
+        _defaultSortApplied = true
+    }
+
     Maui.Theme.colorSet: Maui.Theme.Window
     Maui.Theme.inherit: false
 
@@ -67,12 +97,47 @@ Maui.Page
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
-    headBar.middleContent: Maui.SearchField
+    onCountChanged: applyDefaultSortIfNeeded()
+
+    headBar.leftContent: RowLayout
+    {
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
+
+        Label
+        {
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        ComboBox
+        {
+            id: _alphaSortCombo
+            implicitWidth: 170
+            model: [i18n("Title Ascending"), i18n("Title Descending")]
+            currentIndex: 0
+            onActivated: applyAlphabeticalSort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _genreSortCombo
+            implicitWidth: 170
+            model: [i18n("Genre Ascending"), i18n("Genre Descending")]
+            currentIndex: 0
+            onActivated: applyGenreSort(currentIndex)
+        }
+    }
+
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
     {
         id: _searchField
-        Layout.fillWidth: true
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
         placeholderText: i18n("Search tracks")
         inputMethodHints: Qt.ImhNoAutoUppercase
         enabled: headBar.visible
@@ -97,8 +162,6 @@ Maui.Page
             }
         }
     }
-
-    headBar.rightContent: Item {}
 
     Component
     {

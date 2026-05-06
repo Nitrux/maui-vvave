@@ -14,6 +14,7 @@ public:
     explicit Player(QObject *parent = nullptr);
     
     bool getPlaying() const;
+    Q_INVOKABLE bool isOutputLikelyAvailable(const QString &output) const;
 
 public Q_SLOTS:
     static QString transformTime(int value);
