@@ -567,81 +567,45 @@ Maui.ApplicationWindow
             background: null
             headBar.visible: false
             footerMargins: Maui.Style.contentMargins
+            footBar.preferredHeight: Maui.Style.toolBarHeight
 
-        footBar.leftContent: RowLayout
-        {
-            spacing: Maui.Style.space.small
-
-            ToolButton
+        footBar.leftContent: [
+            Maui.ToolActions
             {
-                text: i18n("Previous")
-                display: AbstractButton.IconOnly
-                icon.name: "media-skip-backward"
-                enabled: currentTrackIndex >= 0
-                onClicked: Player.previousTrack()
-            }
+                expanded: true
+                checkable: false
+                autoExclusive: false
+                display: ToolButton.IconOnly
 
-            ToolButton
-            {
-                text: i18n("Play and pause")
-                display: AbstractButton.IconOnly
-                enabled: currentTrackIndex >= 0
-                icon.name: isPlaying ? "media-playback-pause" : "media-playback-start"
-                onClicked: player.playing ? player.pause() : player.play()
-            }
+                Action
+                {
+                    icon.name: "media-skip-backward"
+                    enabled: currentTrackIndex >= 0
+                    onTriggered: Player.previousTrack()
+                }
 
-            ToolButton
-            {
-                text: i18n("Next")
-                display: AbstractButton.IconOnly
-                icon.name: "media-skip-forward"
-                enabled: currentTrackIndex >= 0
-                onClicked: Player.nextTrack()
-            }
+                Action
+                {
+                    text: i18n("Play and pause")
+                    enabled: currentTrackIndex >= 0
+                    icon.name: isPlaying ? "media-playback-pause" : "media-playback-start"
+                    onTriggered: player.playing ? player.pause() : player.play()
+                }
+
+                Action
+                {
+                    icon.name: "media-skip-forward"
+                    enabled: currentTrackIndex >= 0
+                    onTriggered: Player.nextTrack()
+                }
+            },
 
             Label
             {
                 text: player.formatTime_ms(player.elapsed) + " / " + player.formatTime_ms(player.duration)
                 opacity: 0.8
-                Layout.leftMargin: Maui.Style.space.small
             }
-
-            ToolButton
-            {
-                text: i18n("Shuffle")
-                display: AbstractButton.IconOnly
-                checked: playlist.playMode === Vvave.Playlist.Shuffle
-                icon.name: checked ? "media-playlist-shuffle" : "media-playlist-normal"
-                onClicked: playlist.playMode = checked ? Vvave.Playlist.Normal : Vvave.Playlist.Shuffle
-            }
-
-            ToolButton
-            {
-                text: i18n("Repeat")
-                display: AbstractButton.IconOnly
-                icon.name: switch (playlist.repeatMode)
-                           {
-                           case Vvave.Playlist.NoRepeat: return "media-repeat-none"
-                           case Vvave.Playlist.RepeatOnce: return "media-playlist-repeat-song"
-                           case Vvave.Playlist.Repeat: return "media-playlist-repeat"
-                           }
-                onClicked:
-                {
-                    switch (playlist.repeatMode)
-                    {
-                    case Vvave.Playlist.NoRepeat:
-                        playlist.repeatMode = Vvave.Playlist.Repeat
-                        break
-                    case Vvave.Playlist.Repeat:
-                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
-                        break
-                    case Vvave.Playlist.RepeatOnce:
-                        playlist.repeatMode = Vvave.Playlist.NoRepeat
-                        break
-                    }
-                }
-            }
-        }
+        ]
 
         footBar.middleContent: RowLayout
         {
@@ -707,6 +671,50 @@ Maui.ApplicationWindow
 
             ToolButton
             {
+                text: "\uf074"
+                display: AbstractButton.TextOnly
+                checkable: true
+                checked: playlist.playMode === Vvave.Playlist.Shuffle
+                padding: 0
+                implicitWidth: Maui.Style.iconSizes.medium
+                implicitHeight: Maui.Style.iconSizes.medium
+                font.family: "Font Awesome 6 Free Solid"
+                font.pixelSize: Maui.Style.fontSizes.small
+                font.weight: Font.Black
+                opacity: checked ? 1 : 0.7
+                onClicked: playlist.playMode = checked ? Vvave.Playlist.Normal : Vvave.Playlist.Shuffle
+            }
+
+            ToolButton
+            {
+                text: repeatGlyph(playlist.repeatMode)
+                display: AbstractButton.TextOnly
+                padding: 0
+                implicitWidth: Maui.Style.iconSizes.medium
+                implicitHeight: Maui.Style.iconSizes.medium
+                font.family: "Font Awesome 6 Free Solid"
+                font.pixelSize: Maui.Style.fontSizes.small
+                font.weight: Font.Black
+                opacity: playlist.repeatMode === Vvave.Playlist.NoRepeat ? 0.7 : 1
+                onClicked:
+                {
+                    switch (playlist.repeatMode)
+                    {
+                    case Vvave.Playlist.NoRepeat:
+                        playlist.repeatMode = Vvave.Playlist.Repeat
+                        break
+                    case Vvave.Playlist.Repeat:
+                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
+                        break
+                    case Vvave.Playlist.RepeatOnce:
+                        playlist.repeatMode = Vvave.Playlist.NoRepeat
+                        break
+                    }
+                }
+            }
+
+            ToolButton
+            {
                 id: _footerVolumeButton
                 text: volumeGlyph(player.volume || 0)
                 display: AbstractButton.TextOnly
@@ -759,25 +767,34 @@ Maui.ApplicationWindow
         Slider
         {
             id: _footerEdgeSeekBar
-            parent: _mainPage.footerContainer ? _mainPage.footerContainer : _mainPage
-            z: 20
+            parent: _mainPage.footBar
+            z: 999
             visible: currentTrackIndex >= 0
             anchors.left: parent.left
             anchors.right: parent.right
-            // Inset the track by the footer corner radius so it follows the
-            // rounded top edge instead of crossing into the curved corners.
-            readonly property int edgeInset: Maui.Style.contentMargins + Math.max(Maui.Style.space.small, Maui.Style.radiusV)
+            // Follow the rounded top corners of the toolbar.
+            readonly property int edgeInset: Math.max(0, Maui.Style.radiusV - 1)
             anchors.leftMargin: edgeInset
             anchors.rightMargin: edgeInset
             anchors.top: parent.top
-            anchors.topMargin: -1
+            anchors.topMargin: 0
             from: 0
             to: 1.0
             value: player.position
             live: true
-            padding: 0
-            implicitHeight: 10
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
+            implicitHeight: 3
             onMoved: player.position = value
+
+            function seekTo(xPos)
+            {
+                const ratio = Math.max(0, Math.min(1, xPos / Math.max(1, width)))
+                value = ratio
+                player.position = ratio
+            }
 
             handle: Rectangle
             {
@@ -789,7 +806,7 @@ Maui.ApplicationWindow
             background: Rectangle
             {
                 x: _footerEdgeSeekBar.leftPadding
-                y: _footerEdgeSeekBar.topPadding + (_footerEdgeSeekBar.availableHeight - height) / 2
+                y: 0
                 width: _footerEdgeSeekBar.availableWidth
                 height: 3
                 radius: 2
@@ -801,6 +818,23 @@ Maui.ApplicationWindow
                     height: parent.height
                     radius: parent.radius
                     color: Maui.Theme.highlightColor
+                }
+            }
+
+            MouseArea
+            {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Math.max(Maui.Style.toolBarHeight * 0.4, 14)
+                z: parent.z + 1
+                cursorShape: Qt.PointingHandCursor
+
+                onPressed: (mouse) => _footerEdgeSeekBar.seekTo(mouse.x)
+                onPositionChanged: (mouse) =>
+                {
+                    if (pressed)
+                        _footerEdgeSeekBar.seekTo(mouse.x)
                 }
             }
         }
@@ -1007,7 +1041,7 @@ Maui.ApplicationWindow
                 {
                     width: parent.width
                     anchors.bottom: parent.bottom
-                    active: Vvave.scanning
+                    active: false
                     visible: active
                     sourceComponent: Maui.ProgressIndicator {}
                 }
@@ -1335,6 +1369,19 @@ Maui.ApplicationWindow
         if (volume < 50)
             return "\uf027"
         return "\uf028"
+    }
+
+    function repeatGlyph(mode)
+    {
+        switch (mode)
+        {
+        case Vvave.Playlist.RepeatOnce:
+            return "\uf01e" + "1"
+        case Vvave.Playlist.Repeat:
+            return "\uf01e"
+        default:
+            return "\uf01e"
+        }
     }
 
     function setSleepTimer(option)
