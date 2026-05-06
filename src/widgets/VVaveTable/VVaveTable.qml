@@ -50,6 +50,12 @@ Maui.Page
     signal appendAll()
     signal shuffleAll()
 
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
+
     Maui.Theme.colorSet: Maui.Theme.Window
     Maui.Theme.inherit: false
 
@@ -61,38 +67,38 @@ Maui.Page
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
-    headBar.rightContent: Loader
+    headBar.middleContent: Maui.SearchField
     {
-        asynchronous: true
-        active: headBar.visible
-        visible: active
+        id: _searchField
+        Layout.fillWidth: true
+        Layout.maximumWidth: 500
+        Layout.alignment: Qt.AlignCenter
+        placeholderText: i18n("Search tracks")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
 
-        sourceComponent: Maui.ToolButtonMenu
+        onTextChanged:
         {
-            icon.name: "media-playback-start"
+            const query = text.trim()
+            if (query.length === 0)
+                listModel.clearFilters()
+            else
+                listModel.filters = [query]
+        }
 
-            MenuItem
-            {
-                icon.name : "media-playlist-shuffle"
-                text: i18n("Shuffle Play")
-                onTriggered: shuffleAll()
-            }
+        onCleared: listModel.clearFilters()
 
-            MenuItem
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
             {
-                icon.name : "media-playback-start"
-                text: i18n("Play All")
-                onTriggered: playAll()
-            }
-
-            MenuItem
-            {
-                icon.name : "media-playlist-append"
-                text: i18n("Append All")
-                onTriggered: appendAll()
+                clear()
+                event.accepted = true
             }
         }
     }
+
+    headBar.rightContent: Item {}
 
     Component
     {

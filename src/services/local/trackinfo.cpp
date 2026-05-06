@@ -1,6 +1,4 @@
 #include "trackinfo.h"
-#include "pulpo/pulpo.h"
-
 
 TrackInfo::TrackInfo(QObject *parent) : QObject(parent)
 {
@@ -43,110 +41,52 @@ void TrackInfo::setTrack(QVariantMap track)
 
 void TrackInfo::getInfo()
 {
-    if(m_track.isEmpty())
+    if (m_track.isEmpty())
         return;
 
-    auto artist = m_track.value("artist").toString();
-    auto album = m_track.value("album").toString();
-    auto title = m_track.value("title").toString();
+    const auto artist = m_track.value("artist").toString();
+    const auto album = m_track.value("album").toString();
+    const auto title = m_track.value("title").toString();
 
-    if(artist!= m_artist)
-    {
-        m_artist = artist;
-        getArtistInfo();
+    const bool artistChanged = artist != m_artist;
+    const bool albumChanged = album != m_album;
+    const bool titleChanged = title != m_title;
+
+    m_artist = artist;
+    m_album = album;
+    m_title = title;
+
+    // VVave scope is local playback and web artwork only; avoid extra web metadata requests.
+    if (artistChanged) {
+        m_artistWiki.clear();
+        Q_EMIT this->artistWikiChanged(m_artistWiki);
     }
 
-    if(album != m_album)
-    {
-        m_album = album;
-        getAlbumInfo();
+    if (albumChanged) {
+        m_albumWiki.clear();
+        Q_EMIT this->albumWikiChanged(m_albumWiki);
     }
 
-    if(title != m_title)
-    {
-        m_title = title;
-        getTrackInfo();
+    if (titleChanged) {
+        m_lyrics.clear();
+        Q_EMIT this->lyricsChanged(m_lyrics);
     }
-
 }
 
 void TrackInfo::getAlbumInfo()
 {
-    PULPO::REQUEST request;
-    request.track = FMH::toModel(m_track);
-    request.ontology = PULPO::ONTOLOGY::ALBUM;
-    request.services = {PULPO::SERVICES::LastFm, PULPO::SERVICES::Spotify};
-    request.info = {PULPO::INFO::WIKI};
-    request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
-        qDebug() << "DONE WITH " << request.track;
-
-        for (const auto &res : responses) {
-            if (res.context == PULPO::PULPO_CONTEXT::WIKI) {
-                m_albumWiki = res.value.toString();
-                Q_EMIT this->albumWikiChanged(m_albumWiki);
-            }
-        }
-    };
-
-    auto pulpo = new Pulpo;
-    QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
-    QObject::connect(pulpo, &Pulpo::error, [pulpo]() {
-        pulpo->deleteLater();
-    });
-
-    pulpo->request(request);
+    m_albumWiki.clear();
+    Q_EMIT this->albumWikiChanged(m_albumWiki);
 }
 
 void TrackInfo::getArtistInfo()
 {
-    PULPO::REQUEST request;
-    request.track = FMH::toModel(m_track);
-    request.ontology = PULPO::ONTOLOGY::ARTIST;
-    request.services = {PULPO::SERVICES::LastFm, PULPO::SERVICES::Spotify};
-    request.info = {PULPO::INFO::WIKI};
-    request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
-        qDebug() << "DONE WITH " << request.track;
-
-        for (const auto &res : responses) {
-            if (res.context == PULPO::PULPO_CONTEXT::WIKI) {
-                m_artistWiki = res.value.toString();
-                Q_EMIT this->artistWikiChanged(m_artistWiki);
-            }
-        }
-    };
-
-    auto pulpo = new Pulpo;
-    QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
-    QObject::connect(pulpo, &Pulpo::error, [pulpo]() {
-        pulpo->deleteLater();
-    });
-
-    pulpo->request(request);
+    m_artistWiki.clear();
+    Q_EMIT this->artistWikiChanged(m_artistWiki);
 }
 
 void TrackInfo::getTrackInfo()
 {
-    PULPO::REQUEST request;
-    request.track = FMH::toModel(m_track);
-    request.ontology = PULPO::ONTOLOGY::TRACK;
-    request.services = {PULPO::SERVICES::LyricWikia, PULPO::SERVICES::WikiLyrics};
-    request.info = {PULPO::INFO::LYRICS};
-    request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
-        qDebug() << "DONE WITH " << request.track;
-
-        for (const auto &res : responses) {
-            if (res.context == PULPO::PULPO_CONTEXT::LYRIC) {
-                m_lyrics = res.value.toString();
-                Q_EMIT this->lyricsChanged(m_lyrics);
-            }
-        }
-    };
-
-    auto pulpo = new Pulpo;
-    QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
-    QObject::connect(pulpo, &Pulpo::error, [pulpo]() {
-        pulpo->deleteLater();
-    });
-
-    pulpo->request(request);
+    m_lyrics.clear();
+    Q_EMIT this->lyricsChanged(m_lyrics);
 }

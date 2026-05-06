@@ -1,14 +1,12 @@
 #include "albumsmodel.h"
-#include "db/collectionDB.h"
 
 #include "vvave.h"
 
-#include <MauiKit4/FileBrowsing/downloader.h>
-#include <MauiKit4/FileBrowsing/fmstatic.h>
+#include <algorithm>
+#include <QSet>
 
-#include <QTimer>
-
-AlbumsModel::AlbumsModel(QObject *parent) : MauiList(parent)
+AlbumsModel::AlbumsModel(QObject *parent)
+    : MauiList(parent)
 {
     qRegisterMetaType<FMH::MODEL_LIST>("FMH::MODEL_LIST");
     qRegisterMetaType<FMH::MODEL>("FMH::MODEL");
@@ -16,42 +14,8 @@ AlbumsModel::AlbumsModel(QObject *parent) : MauiList(parent)
 
 void AlbumsModel::componentComplete()
 {
-    auto timer = new QTimer(this);
-    timer->setSingleShot(true);
-    timer->setInterval(1000);
-
-    if (query == QUERY::ALBUMS) {
-
-        connect(CollectionDB::getInstance(), &CollectionDB::albumInserted, [this, timer](QVariantMap) {
-            m_newAlbums++;
-            timer->start();
-        });
-
-        connect(timer, &QTimer::timeout, [this]()
-        {
-            if (m_newAlbums > 0) {
-                this->setList();
-                m_newAlbums = 0;
-            }
-        });
-
-    } else {
-
-        connect(CollectionDB::getInstance(), &CollectionDB::artistInserted, [this, timer](QVariantMap) {
-            m_newAlbums++;
-            timer->start();
-        });
-
-        connect(timer, &QTimer::timeout, [this]()
-        {
-            if (m_newAlbums > 0) {
-                this->setList();
-                m_newAlbums = 0;
-            }
-        });
-    }
-
     connect(vvave::instance(), &vvave::sourceRemoved, this, &AlbumsModel::setList);
+    connect(vvave::instance(), &vvave::sourceAdded, this, &AlbumsModel::setList);
     connect(this, &AlbumsModel::queryChanged, this, &AlbumsModel::setList);
     setList();
 }
@@ -78,16 +42,42 @@ AlbumsModel::QUERY AlbumsModel::getQuery() const
 void AlbumsModel::setList()
 {
     Q_EMIT this->preListChanged();
+    this->list.clear();
 
-    QString m_Query;
-    if (this->query == AlbumsModel::QUERY::ALBUMS)
-        m_Query = "select * from albums order by album asc";
-    else if (this->query == AlbumsModel::QUERY::ARTISTS)
-        m_Query = "select * from artists order by artist asc";
-    else
-        return;
+    const auto tracks = vvave::localTracks();
 
-    this->list = CollectionDB::getInstance()->getDBData(m_Query);
+    if (this->query == AlbumsModel::QUERY::ALBUMS) {
+        QSet<QString> seen;
+        for (const auto &track : tracks) {
+            const auto album = track[FMH::MODEL_KEY::ALBUM];
+            const auto artist = track[FMH::MODEL_KEY::ARTIST];
+
+            const auto key = album + QStringLiteral("\x1f") + artist;
+            if (album.isEmpty() || artist.isEmpty() || seen.contains(key)) {
+                continue;
+            }
+
+            seen.insert(key);
+            this->list << FMH::MODEL{{FMH::MODEL_KEY::ALBUM, album}, {FMH::MODEL_KEY::ARTIST, artist}};
+        }
+
+    } else if (this->query == AlbumsModel::QUERY::ARTISTS) {
+        QSet<QString> seen;
+        for (const auto &track : tracks) {
+            const auto artist = track[FMH::MODEL_KEY::ARTIST];
+            if (artist.isEmpty() || seen.contains(artist)) {
+                continue;
+            }
+
+            seen.insert(artist);
+            this->list << FMH::MODEL{{FMH::MODEL_KEY::ARTIST, artist}};
+        }
+    }
+
+    std::sort(this->list.begin(), this->list.end(), [this](const FMH::MODEL &a, const FMH::MODEL &b) {
+        const auto key = this->query == AlbumsModel::QUERY::ALBUMS ? FMH::MODEL_KEY::ALBUM : FMH::MODEL_KEY::ARTIST;
+        return a[key].compare(b[key], Qt::CaseInsensitive) < 0;
+    });
 
     Q_EMIT this->postListChanged();
     Q_EMIT this->countChanged();

@@ -11,6 +11,12 @@ Maui.AltBrowser
 
     readonly property alias list: _playlistsList
 
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
+
     Maui.Theme.colorSet: Maui.Theme.View
     Maui.Theme.inherit: false
     Maui.Controls.level : Maui.Controls.Secondary
@@ -76,6 +82,7 @@ Maui.AltBrowser
             id: _playlistsList
         }
 
+        filterRole: "playlist"
         recursiveFilteringEnabled: true
         sortCaseSensitivity: Qt.CaseInsensitive
         filterCaseSensitivity: Qt.CaseInsensitive
@@ -85,6 +92,37 @@ Maui.AltBrowser
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
     headBar.visible: count > 0
+
+    headBar.middleContent: Maui.SearchField
+    {
+        id: _searchField
+        Layout.fillWidth: true
+        Layout.maximumWidth: 500
+        Layout.alignment: Qt.AlignCenter
+        placeholderText: i18n("Search playlists")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
+
+        onTextChanged:
+        {
+            const query = text.trim()
+            if (query.length === 0)
+                _playlistsModel.clearFilters()
+            else
+                _playlistsModel.filters = [query]
+        }
+
+        onCleared: _playlistsModel.clearFilters()
+
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
+            {
+                clear()
+                event.accepted = true
+            }
+        }
+    }
 
     headBar.rightContent: ToolButton
     {

@@ -20,7 +20,6 @@ public Q_SLOTS:
    
 private:   
     PowerManagementInterface *m_power;
-    int amountBuffers = 0;
 
 Q_SIGNALS:
     void playingChanged();   

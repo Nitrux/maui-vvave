@@ -154,16 +154,36 @@ Maui.ApplicationWindow
         switch (swipeView.currentIndex)
         {
         case viewsIndex.tracks:
-            return _tracksViewLoader ? _tracksViewLoader.item : null
+            return _tracksView
         case viewsIndex.albums:
-            return _albumsViewLoader ? _albumsViewLoader.item : null
+            return _albumsView
         case viewsIndex.artists:
-            return _artistViewLoader ? _artistViewLoader.item : null
+            return _artistsView
         case viewsIndex.playlists:
-            return _playlistsViewLoader ? _playlistsViewLoader.item : null
+            return _playlistsView
         default:
             return null
         }
+    }
+
+    function focusCurrentSearch()
+    {
+        if (focusView)
+            toggleFocusView()
+
+        const view = resolveCurrentCategoryView()
+        if (!view)
+            return
+
+        const target = view.currentItem ? view.currentItem : view
+        if (target && target.focusSearch)
+        {
+            target.focusSearch()
+            return
+        }
+
+        if (view.focusSearch)
+            view.focusSearch()
     }
 
     Loader
@@ -238,8 +258,7 @@ Maui.ApplicationWindow
         {
             readonly property string dialogLabel: "Increase Volume"
             readonly property string dialogCategory: "Playback"
-            sequence: "+"
-            sequences: ["="]
+            sequence: "Volume Up"
             onActivated: player.volume += 5
         },
 
@@ -247,66 +266,11 @@ Maui.ApplicationWindow
         {
             readonly property string dialogLabel: "Decrease Volume"
             readonly property string dialogCategory: "Playback"
-            sequence: "-"
+            sequence: "Volume Down"
             onActivated: player.volume -= 5
-        },
+        }
 
-        Shortcut
-        {
-            readonly property string dialogLabel: "Go Back"
-            readonly property string dialogCategory: "Navigation"
-            sequences: [StandardKey.Back]
-            onActivated: {
-                // I couldn't get Keys.onShortcutOverride in each view to work. I guess this is more dynamic anyway.
-                let func = getGoBackFunc()
-                if (func) {
-                    func()
-                    return
-                }
-            }
-        },
-
-        Shortcut
-        {
-            readonly property string dialogLabel: "Queue Track"
-            readonly property string dialogCategory: "Navigation"
-            sequences: ["Shift+Return", "Shift+Enter"]
-            // StandardKey.InsertLineSeparator only gets "Enter", not "Return".
-            onActivated: contextualPlayNext()
-        },
-
-        Shortcut
-        {
-            readonly property string dialogLabel: "Shortcuts"
-            readonly property string dialogCategory: "Navigation"
-            sequence: "Ctrl+/"
-            onActivated: openShortcutsDialog()
-        },
-
-        Shortcut
-        {
-            readonly property string dialogLabel: "Settings"
-            readonly property string dialogCategory: "Navigation"
-            sequence: "Ctrl+,"
-            onActivated: openSettingsDialog()
-        },
-
-        Shortcut
-        {
-            readonly property string dialogLabel: "Context Actions"
-            readonly property string dialogCategory: "Navigation"
-            sequence: "Menu"
-            onActivated: {
-                if (activeFocusItem) {
-                    let func = (activeFocusItem.currentItem ?? activeFocusItem).tryOpenContextMenu
-                    if (func) {
-                        func()
-                        return
-                    }
-                }
-                console.log("NO CONTEXT MENU", activeFocusItem, activeFocusItem.currentItem)
-            }
-        }]
+    ]
 
     Shortcut
     {
@@ -677,16 +641,8 @@ Maui.ApplicationWindow
                 id: _stackView
                 focus: true
                 anchors.fill: parent
-                initialItem: _focusViewComponent
+                initialItem: settings.focusViewDefault ? _focusViewComponent : swipeView
                 background: null
-
-            Component.onCompleted:
-            {
-                if(!settings.focusViewDefault)
-                {
-                    toggleFocusView()
-                }
-            }
 
             pushExit: Transition
             {
@@ -853,71 +809,30 @@ Maui.ApplicationWindow
                     }
                 }
 
-                Maui.SwipeViewLoader
+                TracksView
                 {
-                    id: _tracksViewLoader
-                    TracksView
-                    {
-                        id: _tracksView
-                    }
+                    id: _tracksView
                 }
 
-                Maui.SwipeViewLoader
+                AlbumsView
                 {
-                    id: _albumsViewLoader
-
-                    property var pendingAlbum : ({})
-
-                    AlbumsView
-                    {
-                        id: _albumsView
-                        holder.title : i18n("No Albums!")
-                        holder.body: i18n("Add new music sources")
-                        list.query: Albums.ALBUMS
-
-                        Component.onCompleted:
-                        {
-                            if(Object.keys(_albumsViewLoader.pendingAlbum).length)
-                            {
-                                populateTable(_albumsViewLoader.pendingAlbum.album, _albumsViewLoader.pendingAlbum.artist)
-                            }
-                        }
-                    }
+                    id: _albumsView
+                    holder.title : i18n("No Albums!")
+                    holder.body: i18n("Add new music sources")
+                    list.query: Albums.ALBUMS
                 }
 
-                Maui.SwipeViewLoader
+                AlbumsView
                 {
-                    id: _artistViewLoader
-
-                    property string pendingArtist
-
-                    AlbumsView
-                    {
-                        id: _artistsView
-                        holder.title : i18n("No Artists!")
-                        holder.body: i18n("Add new music sources")
-                        list.query : Albums.ARTISTS
-
-                        Component.onCompleted:
-                        {
-                            if(_artistViewLoader.pendingArtist.length)
-                            {
-                                populateTable(undefined, _artistViewLoader.pendingArtist)
-
-                            }
-                        }
-                    }
+                    id: _artistsView
+                    holder.title : i18n("No Artists!")
+                    holder.body: i18n("Add new music sources")
+                    list.query : Albums.ARTISTS
                 }
 
-                Maui.SwipeViewLoader
+                PlaylistsView
                 {
-                    id: _playlistsViewLoader
-                    property string pendingTag
-
-                    PlaylistsView
-                    {
-                        id: _playlistsView
-                    }
+                    id: _playlistsView
                 }
 
                 data: Loader
@@ -981,11 +896,14 @@ Maui.ApplicationWindow
     {
         if(focusView)
         {
-            _stackView.push(swipeView)
+            if (_stackView.depth > 1)
+                _stackView.pop()
+            else
+                _stackView.push(swipeView)
 
         }else
         {
-            _stackView.pop()
+            _stackView.push(_focusViewComponent)
         }
 
         if(_stackView.currentItem)
@@ -1060,13 +978,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = viewsIndex.albums
-        if(_albumsViewLoader.item)
-        {
-            _albumsViewLoader.item.populateTable(album, artist)
-        }else
-        {
-            _albumsViewLoader.pendingAlbum = ({'artist': artist, 'album': album})
-        }
+        _albumsView.populateTable(album, artist)
     }
 
     function goToArtist(artist)
@@ -1077,13 +989,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = viewsIndex.artists
-        if(_artistViewLoader.item)
-        {
-            _artistViewLoader.item.populateTable(undefined, artist)
-        }else
-        {
-            _artistViewLoader.pendingArtist = artist
-        }
+        _artistsView.populateTable(undefined, artist)
     }
 
     function goToPlaylist(tag)
@@ -1094,13 +1000,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = viewsIndex.playlists
-        if(_playlistsViewLoader.item)
-        {
-            _playlistsViewLoader.item.populate(tag)
-        }else
-        {
-            _playlistsViewLoader.pendingTag = tag
-        }
+        _playlistsView.populate(tag)
     }
 
     function tagUrls(urls)
@@ -1125,7 +1025,19 @@ Maui.ApplicationWindow
 
     function isUrlOpen(url : string) : bool
     {
-        return false;
+        if (!mainPlaylist || !mainPlaylist.listModel || !mainPlaylist.listModel.list)
+            return false
+
+        const playlistUrls = mainPlaylist.listModel.list.urls()
+        const target = Qt.resolvedUrl(url)
+
+        for (const playlistUrl of playlistUrls)
+        {
+            if (playlistUrl === url || Qt.resolvedUrl(playlistUrl) === target)
+                return true
+        }
+
+        return false
     }
 
     function getGoBackFunc()

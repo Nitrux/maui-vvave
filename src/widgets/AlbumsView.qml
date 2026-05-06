@@ -44,11 +44,11 @@ StackView
             var query
             if(album && artist)
             {
-            query = Q.GET.albumTracks_.arg(album)
-            query = query.arg(artist)
+            query = Q.GET.albumTracks_.arg(encodeURIComponent(album))
+            query = query.arg(encodeURIComponent(artist))
             }else if(artist && !album)
             {
-              query = Q.GET.artistTracks_.arg(artist)
+              query = Q.GET.artistTracks_.arg(encodeURIComponent(artist))
             }
 
             Player.playQuery(query)
@@ -112,12 +112,12 @@ StackView
         var query
         if(currentAlbum && currentArtist)
         {
-            query = Q.GET.albumTracks_.arg(currentAlbum)
-            query = query.arg(currentArtist)
+            query = Q.GET.albumTracks_.arg(encodeURIComponent(currentAlbum))
+            query = query.arg(encodeURIComponent(currentArtist))
 
         }else if(currentArtist && !currentAlbum.length)
         {
-            query = Q.GET.artistTracks_.arg(currentArtist)
+            query = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
         }
 
         console.log("GET ARTIST OR ALBUM BY", album, artist)

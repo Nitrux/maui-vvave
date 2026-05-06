@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QByteArray>
 #include <QObject>
 #include <QString>
 
@@ -24,7 +23,6 @@ public:
     QString getGenre() const;
     QString fileName() const;
     QString getComment() const;
-    QByteArray getCover() const;
     int getDuration() const;
     uint getYear() const;
 
@@ -36,10 +34,8 @@ public:
     void setArtist(const QString &artist);
     void setGenre(const QString &genre);
     void setComment(const QString &comment);
-    void setCover(const QByteArray &array);
 
 private:
-    TagLib::FileRef *file;
+    TagLib::FileRef *file = nullptr;
     QString path;
-    wchar_t *m_path;
 };

@@ -1,7 +1,6 @@
-﻿#pragma once
+#pragma once
 
 #include <QObject>
-#include <QThread>
 
 #include <MauiKit4/Core/mauilist.h>
 
@@ -28,9 +27,7 @@ private:
 
     void setList();
 
-    AlbumsModel::QUERY query;
-
-    int m_newAlbums;
+    AlbumsModel::QUERY query = AlbumsModel::QUERY::ALBUMS;
 
 public Q_SLOTS:
     void refresh();

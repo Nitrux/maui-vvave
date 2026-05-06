@@ -5,7 +5,6 @@
 #include <QImage>
 #include <QObject>
 #include <QQuickImageProvider>
-#include <QThread>
 
 class ArtworkFetcher : public QObject
 {
@@ -29,14 +28,10 @@ private:
     QString m_id;
     QSize m_requestedSize;
     QImage m_image;
-    QThread m_worker;
 };
 
 class ArtworkProvider : public QQuickAsyncImageProvider
 {
 public:
     QQuickImageResponse *requestImageResponse(const QString &id, const QSize &requestedSize) override;
-
-    //    void updateArtwork(const int index, const QString &artwork);
-    //    void startFetchingArtwork(FMH::MODEL_LIST data, PULPO::ONTOLOGY ontology);
 };

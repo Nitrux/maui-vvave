@@ -95,42 +95,8 @@ StackView
 
             Component.onCompleted:
             {
-                isPublic = false
-
-                switch(currentPlaylist)
-                {
-                case "mostPlayed":
-                    playlistQuery = Q.GET.mostPlayedTracks
-                    filterList.listModel.sort = "title"
-                    break;
-
-                case "randomTracks":
-                    filterList.listModel.sort = "title"
-                    playlistQuery = Q.GET.randomTracks_;
-                    break;
-
-                case "recentTracks":
-                    playlistQuery = Q.GET.recentTracks_;
-                    filterList.listModel.sort = "title"
-                    break;
-
-                case "neverPlayed":
-                    playlistQuery = Q.GET.neverPlayedTracks_;
-                    filterList.listModel.sort = "title"
-                    break;
-
-                case "classicTracks":
-                    playlistQuery = Q.GET.oldTracks;
-                    filterList.listModel.sort = "title"
-                    break;
-
-                default:
-                    isPublic = true
-                    playlistQuery = Q.GET.playlistTracks_.arg(currentPlaylist)
-                    break;
-                }
-
-                filterList.isPublic = isPublic
+                filterList.isPublic = true
+                playlistQuery = Q.GET.playlistTracks_.arg(currentPlaylist)
                 filterList.listModel.clearFilters()
             }
         }

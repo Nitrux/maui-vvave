@@ -88,6 +88,9 @@ void TagInfo::setFile(const QString &url)
     this->path = url;
     QFileInfo _file(this->path);
 
+    delete this->file;
+    this->file = nullptr;
+
     if (_file.isReadable() && _file.exists()) {
         this->file = new TagLib::FileRef(TagLib::FileName(path.toUtf8()));
     } else
@@ -111,17 +114,6 @@ QString TagInfo::getComment() const
 {
     const auto value = QString::fromStdWString(file->tag()->comment().toWString());
     return !value.isEmpty() ? value : SLANG[W::UNKNOWN];
-}
-
-QByteArray TagInfo::getCover() const
-{
-    QByteArray array;
-    return array;
-}
-
-void TagInfo::setCover(const QByteArray &array)
-{
-    Q_UNUSED(array);
 }
 
 void TagInfo::setComment(const QString &comment)

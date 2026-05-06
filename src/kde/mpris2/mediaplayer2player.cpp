@@ -265,7 +265,16 @@ void MediaPlayer2Player::SetPosition(const QDBusObjectPath &trackId, qlonglong p
 
 void MediaPlayer2Player::OpenUri(const QString &uri)
 {
-    Q_UNUSED(uri);
+    if (!m_playListControler || uri.isEmpty()) {
+        return;
+    }
+
+    const auto insertAt = m_playListControler->currentIndex() >= 0 ? m_playListControler->currentIndex() + 1 : 0;
+    m_playListControler->insert(QStringList{uri}, insertAt);
+
+    if (m_playListControler->currentIndex() < 0) {
+        m_playListControler->play(0);
+    }
 }
 
 void MediaPlayer2Player::playerSourceChanged()

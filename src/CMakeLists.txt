@@ -19,7 +19,6 @@ set(vvave_SRCS
     services/local/trackinfo.cpp
     services/local/metadataeditor.cpp
     services/local/powermanagementinterface.cpp
-    db/collectionDB.cpp
     models/tracks/tracksmodel.cpp
     models/playlists/playlistsmodel.cpp
     models/albums/albumsmodel.cpp
@@ -92,7 +91,6 @@ target_link_libraries(${PROJECT_NAME}
     MauiKit4::Audio
     Qt6::Core
     Qt6::Network
-    Qt6::Sql
     Qt6::Qml
     Qt6::Xml
     Qt6::Multimedia

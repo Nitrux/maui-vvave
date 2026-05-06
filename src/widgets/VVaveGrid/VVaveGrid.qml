@@ -19,16 +19,64 @@ Maui.AltBrowser
     signal albumCoverClicked(string album, string artist)
     signal playAll(string album, string artist)
 
+    function searchRole()
+    {
+        return prefix === "album" ? "album" : "artist"
+    }
+
+    function syncSearchRole()
+    {
+        listModel.filterRole = searchRole()
+    }
+
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
+
     Maui.Controls.level : Maui.Controls.Secondary
 
     Maui.Theme.colorSet: Maui.Theme.View
     Maui.Theme.inherit: false
     headBar.visible: listModel.list.count > 0
+    onPrefixChanged: syncSearchRole()
 
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
     floatingHeader: true
+
+    headBar.middleContent: Maui.SearchField
+    {
+        id: _searchField
+        Layout.fillWidth: true
+        Layout.maximumWidth: 500
+        Layout.alignment: Qt.AlignCenter
+        placeholderText: prefix === "album" ? i18n("Search albums") : i18n("Search artists")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
+
+        onTextChanged:
+        {
+            const query = text.trim()
+            if (query.length === 0)
+                listModel.clearFilters()
+            else
+                listModel.filters = [query]
+        }
+
+        onCleared: listModel.clearFilters()
+
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
+            {
+                clear()
+                event.accepted = true
+            }
+        }
+    }
 
     viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
 
@@ -103,6 +151,8 @@ Maui.AltBrowser
             id: _albumsList
         }
     }
+
+    Component.onCompleted: syncSearchRole()
 
     listDelegate: Maui.ListBrowserDelegate
     {
