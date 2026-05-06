@@ -9,7 +9,7 @@ import org.mauikit.controls as Maui
 import org.mauikit.filebrowsing  as FB
 
 import org.maui.vvave
-import org.maui.vvave as Vvave
+import org.maui.vvave as VvaveTypes
 
 import "widgets"
 import "widgets/PlaylistsView"
@@ -618,7 +618,7 @@ Maui.ApplicationWindow
             {
                 Layout.preferredWidth: Maui.Style.iconSizes.big + Maui.Style.space.small
                 Layout.preferredHeight: Layout.preferredWidth
-                radius: Maui.Style.radiusS
+                radius: Maui.Style.radiusV
                 color: Maui.Theme.alternateBackgroundColor
                 clip: true
 
@@ -674,7 +674,7 @@ Maui.ApplicationWindow
                 text: "\uf074"
                 display: AbstractButton.TextOnly
                 checkable: true
-                checked: playlist.playMode === Vvave.Playlist.Shuffle
+                checked: playlist.playMode === VvaveTypes.Playlist.Shuffle
                 padding: 0
                 implicitWidth: Maui.Style.iconSizes.medium
                 implicitHeight: Maui.Style.iconSizes.medium
@@ -682,7 +682,7 @@ Maui.ApplicationWindow
                 font.pixelSize: Maui.Style.fontSizes.small
                 font.weight: Font.Black
                 opacity: checked ? 1 : 0.7
-                onClicked: playlist.playMode = checked ? Vvave.Playlist.Normal : Vvave.Playlist.Shuffle
+                onClicked: playlist.playMode = checked ? VvaveTypes.Playlist.Normal : VvaveTypes.Playlist.Shuffle
             }
 
             ToolButton
@@ -695,19 +695,19 @@ Maui.ApplicationWindow
                 font.family: "Font Awesome 6 Free Solid"
                 font.pixelSize: Maui.Style.fontSizes.small
                 font.weight: Font.Black
-                opacity: playlist.repeatMode === Vvave.Playlist.NoRepeat ? 0.7 : 1
+                opacity: playlist.repeatMode === VvaveTypes.Playlist.NoRepeat ? 0.7 : 1
                 onClicked:
                 {
                     switch (playlist.repeatMode)
                     {
-                    case Vvave.Playlist.NoRepeat:
-                        playlist.repeatMode = Vvave.Playlist.Repeat
+                    case VvaveTypes.Playlist.NoRepeat:
+                        playlist.repeatMode = VvaveTypes.Playlist.Repeat
                         break
-                    case Vvave.Playlist.Repeat:
-                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
+                    case VvaveTypes.Playlist.Repeat:
+                        playlist.repeatMode = VvaveTypes.Playlist.RepeatOnce
                         break
-                    case Vvave.Playlist.RepeatOnce:
-                        playlist.repeatMode = Vvave.Playlist.NoRepeat
+                    case VvaveTypes.Playlist.RepeatOnce:
+                        playlist.repeatMode = VvaveTypes.Playlist.NoRepeat
                         break
                     }
                 }
@@ -1375,9 +1375,9 @@ Maui.ApplicationWindow
     {
         switch (mode)
         {
-        case Vvave.Playlist.RepeatOnce:
+        case VvaveTypes.Playlist.RepeatOnce:
             return "\uf01e" + "1"
-        case Vvave.Playlist.Repeat:
+        case VvaveTypes.Playlist.Repeat:
             return "\uf01e"
         default:
             return "\uf01e"
