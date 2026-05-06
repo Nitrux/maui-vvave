@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Effects
 
 import org.mauikit.controls as Maui
+import org.mauikit.filebrowsing as FB
 
 import org.maui.vvave as Vvave
 
@@ -30,6 +31,12 @@ Maui.Page
 
     background: null
 
+    Component
+    {
+        id: _fileDialogComponent
+        FB.FileDialog {onClosed: destroy()}
+    }
+
     VVaveTable
     {
         id: table
@@ -43,7 +50,9 @@ Maui.Page
 
             ToolButton
             {
-                icon.name: "edit-delete"
+                icon.name: "edit-clear"
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Clear playlist")
                 onClicked:
                 {
                     player.stop()
@@ -76,6 +85,8 @@ Maui.Page
             ToolButton
             {
                 icon.name: "document-save"
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Save playlist to file")
                 onClicked: saveList()
             },
 
@@ -87,6 +98,13 @@ Maui.Page
                            case Vvave.Playlist.RepeatOnce: return "media-playlist-repeat-song"
                            case Vvave.Playlist.Repeat: return "media-playlist-repeat"
                            }
+                ToolTip.visible: hovered
+                ToolTip.text: switch(playlist.repeatMode)
+                              {
+                              case Vvave.Playlist.NoRepeat: return i18n("Repeat: Off")
+                              case Vvave.Playlist.RepeatOnce: return i18n("Repeat: One")
+                              case Vvave.Playlist.Repeat: return i18n("Repeat: All")
+                              }
                 onClicked:
                 {
                     switch(playlist.repeatMode)
@@ -114,6 +132,8 @@ Maui.Page
                            case Vvave.Playlist.Normal: return "media-playlist-normal"
                            case Vvave.Playlist.Shuffle: return "media-playlist-shuffle"
                            }
+                ToolTip.visible: hovered
+                ToolTip.text: checked ? i18n("Playback mode: Shuffle") : i18n("Playback mode: Normal")
 
                 onClicked:
                 {
@@ -266,7 +286,6 @@ Maui.Page
 
             width: ListView.view.width
             height: Math.max(implicitHeight, Maui.Style.rowHeight)
-            appendButton: false
 
             property int mindex : index
 
@@ -383,10 +402,29 @@ Maui.Page
 
         function saveList()
         {
-            let trackList = listModel.list.urls()
-            if(listModel.list.count > 0)
-            {
-                tagUrls(trackList)
-            }
+            if (listModel.list.count <= 0)
+                return
+
+            const suggested = "VVave Playlist " + Qt.formatDateTime(new Date(), "yyyy-MM-dd hh-mm-ss") + ".m3u"
+            const props = ({
+                               'mode': FB.FileDialog.Modes.Save,
+                               'singleSelection': true,
+                               'currentPath': FB.FM.homePath(),
+                               'suggestedFileName': suggested,
+                               'callback': function(paths)
+                               {
+                                   if (!paths || paths.length === 0)
+                                       return
+
+                                   const ok = playlist.exportM3U(paths[0])
+                                   if (ok)
+                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist saved"), paths[0])
+                                   else
+                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not save playlist"), paths[0])
+                               }
+                           })
+
+            const dialog = _fileDialogComponent.createObject(root, props)
+            dialog.open()
         }
     }

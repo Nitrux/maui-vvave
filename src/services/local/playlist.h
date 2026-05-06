@@ -75,6 +75,7 @@ public Q_SLOTS:
     void clear();
 
     void save();
+    bool exportM3U(const QString &filePath);
     void loadLastPlaylist();
 
     void append(const QVariantMap &track);

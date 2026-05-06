@@ -9,7 +9,6 @@ import org.mauikit.controls as Maui
 import org.mauikit.filebrowsing  as FB
 
 import org.maui.vvave
-import org.maui.vvave as VvaveTypes
 
 import "widgets"
 import "widgets/PlaylistsView"
@@ -566,8 +565,11 @@ Maui.ApplicationWindow
             anchors.fill: parent
             background: null
             headBar.visible: false
-            footerMargins: Maui.Style.contentMargins
-            footBar.preferredHeight: Maui.Style.toolBarHeight
+            footerMargins: Maui.Style.space.tiny
+            footBar.preferredHeight: Maui.Style.toolBarHeightAlt + 2
+            footBar.topPadding: 0
+            footBar.bottomPadding: 0
+            readonly property int footerArtworkSize: Math.max(Maui.Style.iconSizes.medium, footBar.preferredHeight - (Maui.Style.space.small * 2))
 
         footBar.leftContent: [
             Maui.ToolActions
@@ -603,7 +605,7 @@ Maui.ApplicationWindow
             Label
             {
                 text: player.formatTime_ms(player.elapsed) + " / " + player.formatTime_ms(player.duration)
-                opacity: 0.8
+                Layout.leftMargin: Maui.Style.space.medium
             }
         ]
 
@@ -616,8 +618,9 @@ Maui.ApplicationWindow
 
             Rectangle
             {
-                Layout.preferredWidth: Maui.Style.iconSizes.big + Maui.Style.space.small
+                Layout.preferredWidth: _mainPage.footerArtworkSize
                 Layout.preferredHeight: Layout.preferredWidth
+                Layout.alignment: Qt.AlignVCenter
                 radius: Maui.Style.radiusV
                 color: Maui.Theme.alternateBackgroundColor
                 clip: true
@@ -637,6 +640,7 @@ Maui.ApplicationWindow
             {
                 spacing: 0
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
 
                 Label
                 {
@@ -668,50 +672,6 @@ Maui.ApplicationWindow
         footBar.rightContent: RowLayout
         {
             spacing: Maui.Style.space.small
-
-            ToolButton
-            {
-                text: "\uf074"
-                display: AbstractButton.TextOnly
-                checkable: true
-                checked: playlist.playMode === VvaveTypes.Playlist.Shuffle
-                padding: 0
-                implicitWidth: Maui.Style.iconSizes.medium
-                implicitHeight: Maui.Style.iconSizes.medium
-                font.family: "Font Awesome 6 Free Solid"
-                font.pixelSize: Maui.Style.fontSizes.small
-                font.weight: Font.Black
-                opacity: checked ? 1 : 0.7
-                onClicked: playlist.playMode = checked ? VvaveTypes.Playlist.Normal : VvaveTypes.Playlist.Shuffle
-            }
-
-            ToolButton
-            {
-                text: repeatGlyph(playlist.repeatMode)
-                display: AbstractButton.TextOnly
-                padding: 0
-                implicitWidth: Maui.Style.iconSizes.medium
-                implicitHeight: Maui.Style.iconSizes.medium
-                font.family: "Font Awesome 6 Free Solid"
-                font.pixelSize: Maui.Style.fontSizes.small
-                font.weight: Font.Black
-                opacity: playlist.repeatMode === VvaveTypes.Playlist.NoRepeat ? 0.7 : 1
-                onClicked:
-                {
-                    switch (playlist.repeatMode)
-                    {
-                    case VvaveTypes.Playlist.NoRepeat:
-                        playlist.repeatMode = VvaveTypes.Playlist.Repeat
-                        break
-                    case VvaveTypes.Playlist.Repeat:
-                        playlist.repeatMode = VvaveTypes.Playlist.RepeatOnce
-                        break
-                    case VvaveTypes.Playlist.RepeatOnce:
-                        playlist.repeatMode = VvaveTypes.Playlist.NoRepeat
-                        break
-                    }
-                }
-            }
 
             ToolButton
             {
@@ -791,8 +751,8 @@ Maui.ApplicationWindow
 
             function seekTo(xPos)
             {
-                const ratio = Math.max(0, Math.min(1, xPos / Math.max(1, width)))
-                value = ratio
+                const localX = Math.max(0, Math.min(availableWidth, xPos - leftPadding))
+                const ratio = Math.max(0, Math.min(1, localX / Math.max(1, availableWidth)))
                 player.position = ratio
             }
 
@@ -805,6 +765,7 @@ Maui.ApplicationWindow
 
             background: Rectangle
             {
+                id: _footerEdgeSeekBarTrack
                 x: _footerEdgeSeekBar.leftPadding
                 y: 0
                 width: _footerEdgeSeekBar.availableWidth
@@ -825,8 +786,8 @@ Maui.ApplicationWindow
             {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.top: parent.top
-                height: Math.max(Maui.Style.toolBarHeight * 0.4, 14)
+                y: Math.max(0, _footerEdgeSeekBarTrack.y - 3)
+                height: _footerEdgeSeekBarTrack.height + 6
                 z: parent.z + 1
                 cursorShape: Qt.PointingHandCursor
 
@@ -1369,19 +1330,6 @@ Maui.ApplicationWindow
         if (volume < 50)
             return "\uf027"
         return "\uf028"
-    }
-
-    function repeatGlyph(mode)
-    {
-        switch (mode)
-        {
-        case VvaveTypes.Playlist.RepeatOnce:
-            return "\uf01e" + "1"
-        case VvaveTypes.Playlist.Repeat:
-            return "\uf01e"
-        default:
-            return "\uf01e"
-        }
     }
 
     function setSleepTimer(option)

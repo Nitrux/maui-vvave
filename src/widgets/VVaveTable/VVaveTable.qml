@@ -328,7 +328,6 @@ Maui.Page
             height: Math.max(implicitHeight, Maui.Style.rowHeight)
             number: trackNumberVisible
             coverArt: coverArtVisible ? (control.width > 200) : coverArtVisible
-            appendButton: control.showQuickActions && (Maui.Handy.isTouch ? true : delegate.hovered)
 
             onPressAndHold:
             {
@@ -357,11 +356,6 @@ Maui.Page
             {
                 const item = listModel.get(index-1)
                 return coverArt && item && item.album === album && item.artist === artist
-            }
-
-            onAppendClicked:{
-                currentIndex = index
-                appendTrack(index)
             }
 
             onClicked: (mouse) =>

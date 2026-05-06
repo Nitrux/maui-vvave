@@ -18,10 +18,6 @@ Maui.ListBrowserDelegate
     readonly property int track : model.track
 
     property bool sameAlbum : false
-    property bool appendButton : false
-
-    signal appendClicked()
-
     maskRadius: Maui.Style.radiusV
 
     isCurrentItem: ListView.isCurrentItem || checked
@@ -37,16 +33,4 @@ Maui.ListBrowserDelegate
     iconVisible: !control.sameAlbum && control.coverArt
     imageSource: coverArt ? "image://artwork/album:"+ control.artist+":"+control.album : ""
 
-    ToolButton
-    {
-        visible: control.appendButton
-        icon.name: "list-add"
-        onClicked: control.appendClicked()
-        icon.color: delegate.label1.color
-        flat: true
-        icon.width: 16
-        icon.height: 16
-        padding: 0
-        opacity: delegate.hovered ? 0.8 : 0.6
-    }
 }

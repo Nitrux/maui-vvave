@@ -5,6 +5,8 @@
 #include <QIcon>
 #include <QApplication>
 #include <QSurfaceFormat>
+#include <QDate>
+#include <QGuiApplication>
 
 #include <KLocalizedString>
 
@@ -49,26 +51,28 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     qDebug() << "APP LOADING SPEED TESTS" << 2;
 
     app.setOrganizationName(QStringLiteral("Maui"));
-    app.setWindowIcon(QIcon(":/assets/vvave.png"));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("maui-vvave"), QIcon(QStringLiteral(":/assets/vvave.png"))));
+    QGuiApplication::setDesktopFileName(QStringLiteral("org.maui.vvave"));
 
     KLocalizedString::setApplicationDomain("vvave");
     KAboutData about(QStringLiteral("vvave"),
-                     QStringLiteral("Vvave"),
+                     i18n("Vvave"),
                      VVAVE_VERSION_STRING,
                      i18n("Organize and listen to your music."),
                      KAboutLicense::LGPL_V3,
-                     APP_COPYRIGHT_NOTICE,
+                     i18n("© %1 Made by Nitrux | Built with MauiKit", QString::number(QDate::currentDate().year())),
                      QString(GIT_BRANCH) + "/" + QString(GIT_COMMIT_HASH));
 
     about.addAuthor("Camilo Higuita", i18n("Developer"), QStringLiteral("milo.h@aol.com"));
     about.addAuthor("Will Chen", i18n("Developer"), QStringLiteral("intralexical@gmail.com"));
+    about.addAuthor(QStringLiteral("Uri Herrera"), i18n("Developer"), QStringLiteral("uri_herrera@nxos.org"));
 
-    about.setHomepage("https://mauikit.org");
-    about.setProductName("maui/vvave");
+    about.setHomepage("https://nxos.org");
+    about.setProductName("nitrux/vvave");
     about.setBugAddress("https://invent.kde.org/maui/vvave/-/issues");
     about.setOrganizationDomain(VVAVE_URI);
     about.setProgramLogo(app.windowIcon());
-    about.setDesktopFileName("org.kde.vvave");
+    about.setDesktopFileName("org.maui.vvave");
 
     about.addComponent("TagLib",
                        "",

@@ -4,6 +4,8 @@
 // #include <QRandomGenerator>
 #include <QDebug>
 #include <QSettings>
+#include <QSaveFile>
+#include <QTextStream>
 #include <QUrl>
 #include <QtGlobal>
 
@@ -209,6 +211,47 @@ void Playlist::save()
     settings.setValue("LASTPLAYLIST", urls);
     settings.setValue("PLAYLIST_POS", savedIndex);
     settings.endGroup();
+}
+
+bool Playlist::exportM3U(const QString &filePath)
+{
+    if (!m_model || filePath.trimmed().isEmpty()) {
+        return false;
+    }
+
+    const auto targetUrl = QUrl::fromUserInput(filePath);
+    const auto localPath = targetUrl.isLocalFile() ? targetUrl.toLocalFile() : filePath;
+
+    QSaveFile file(localPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Could not open playlist file for writing:" << localPath;
+        return false;
+    }
+
+    QTextStream out(&file);
+    out << "#EXTM3U\n";
+
+    for (int i = 0; i < m_model->getCount(); ++i) {
+        const auto track = m_model->get(i);
+        const auto url = track.value("url").toUrl();
+        const auto artist = track.value("artist").toString().trimmed();
+        const auto title = track.value("title").toString().trimmed();
+        const auto duration = track.value("duration").toString().toInt();
+
+        if (!artist.isEmpty() || !title.isEmpty()) {
+            const auto name = artist.isEmpty() ? title : (artist + " - " + title);
+            out << "#EXTINF:" << duration << "," << name << "\n";
+        }
+
+        out << (url.isValid() ? url.toString() : track.value("url").toString()) << "\n";
+    }
+
+    if (!file.commit()) {
+        qWarning() << "Could not finalize playlist file:" << localPath;
+        return false;
+    }
+
+    return true;
 }
 
 void Playlist::append(const QVariantMap &track)
