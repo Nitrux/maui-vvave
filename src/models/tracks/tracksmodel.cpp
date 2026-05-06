@@ -16,7 +16,9 @@ void TracksModel::componentComplete()
     connect(this, &TracksModel::queryChanged, this, &TracksModel::setList);
     connect(vvave::instance(), &vvave::sourceRemoved, this, &TracksModel::setList);
     connect(vvave::instance(), &vvave::sourceAdded, this, &TracksModel::setList);
-    setList();
+    if (m_autoPopulate) {
+        setList();
+    }
 }
 
 const FMH::MODEL_LIST &TracksModel::items() const
@@ -42,6 +44,10 @@ int TracksModel::limit() const
 
 void TracksModel::setList()
 {
+    if (!m_autoPopulate && query.isEmpty()) {
+        return;
+    }
+
     Q_EMIT this->preListChanged();
     this->list.clear();
 
@@ -272,4 +278,19 @@ void TracksModel::setLimit(int limit)
 
     m_limit = limit;
     Q_EMIT limitChanged(m_limit);
+}
+
+bool TracksModel::autoPopulate() const
+{
+    return m_autoPopulate;
+}
+
+void TracksModel::setAutoPopulate(bool autoPopulate)
+{
+    if (m_autoPopulate == autoPopulate) {
+        return;
+    }
+
+    m_autoPopulate = autoPopulate;
+    Q_EMIT autoPopulateChanged(m_autoPopulate);
 }

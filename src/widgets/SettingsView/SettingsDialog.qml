@@ -139,6 +139,72 @@ Maui.SettingsDialog
 
     Maui.SectionGroup
     {
+        title: i18n("General")
+//        description: i18n("Configure the app plugins and collection behavior.")
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Focus View")
+            label2.text: i18n("Make the focus view the default.")
+
+            Switch
+            {
+                Layout.fillHeight: true
+                checked: settings.focusViewDefault
+                onToggled:
+                {
+                     settings.focusViewDefault = !settings.focusViewDefault
+                }
+            }
+        }
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Artwork")
+            label2.text: i18n("Show the cover artwork for the tracks.")
+
+            Switch
+            {
+                Layout.fillHeight: true
+                checked: settings.showArtwork
+                onToggled:
+                {
+                    settings.showArtwork = !settings.showArtwork
+                }
+            }
+        }
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Titles")
+            label2.text: i18n("Show the title of albums and artists in the grid view.")
+
+            Switch
+            {
+                Layout.fillHeight: true
+                checked: settings.showTitles
+                onToggled:
+                {
+                    settings.showTitles = !settings.showTitles
+                }
+            }
+        }
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Fetch Artwork")
+            label2.text: i18n("Gathers album and artists artworks from online services: LastFM, Spotify, MusicBrainz, iTunes, Genius, and others.")
+
+            Switch
+            {
+                checkable: true
+                checked: settings.fetchArtwork
+                onToggled:  settings.fetchArtwork = !settings.fetchArtwork
+            }
+        }
+    }
+
+    Maui.SectionGroup
+    {
         title: i18n("Playback")
 
         Maui.FlexSectionItem
@@ -212,80 +278,6 @@ Maui.SettingsDialog
                 function onPreferredOutputChanged()
                 {
                     _outputCombo.syncCurrentIndex()
-                }
-            }
-        }
-    }
-
-    Maui.SectionGroup
-    {
-        title: i18n("Collection")
-//        description: i18n("Configure the app plugins and collection behavior.")
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Fetch Artwork")
-            label2.text: i18n("Gathers album and artists artworks from online services: LastFM, Spotify, MusicBrainz, iTunes, Genius, and others.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.fetchArtwork
-                onToggled:  settings.fetchArtwork = !settings.fetchArtwork
-            }
-        }
-
-    }
-
-    Maui.SectionGroup
-    {
-        title: i18n("General")
-//        description: i18n("Configure the app plugins and collection behavior.")
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Focus View")
-            label2.text: i18n("Make the focus view the default.")
-
-            Switch
-            {
-                Layout.fillHeight: true
-                checked: settings.focusViewDefault
-                onToggled:
-                {
-                     settings.focusViewDefault = !settings.focusViewDefault
-                }
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Artwork")
-            label2.text: i18n("Show the cover artwork for the tracks.")
-
-            Switch
-            {
-                Layout.fillHeight: true
-                checked: settings.showArtwork
-                onToggled:
-                {
-                    settings.showArtwork = !settings.showArtwork
-                }
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Titles")
-            label2.text: i18n("Show the title of albums and artists in the grid view.")
-
-            Switch
-            {
-                Layout.fillHeight: true
-                checked: settings.showTitles
-                onToggled:
-                {
-                    settings.showTitles = !settings.showTitles
                 }
             }
         }

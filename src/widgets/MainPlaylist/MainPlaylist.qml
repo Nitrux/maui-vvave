@@ -35,6 +35,7 @@ Maui.Page
         id: table
         clip: true
         anchors.fill: parent
+        list.autoPopulate: false
         footBar.visible: !mainlistEmpty
         footerMargins: Maui.Style.defaultPadding
         background: null

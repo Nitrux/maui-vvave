@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QSettings>
 #include <QUrl>
+#include <QtGlobal>
 
 #include <random>
 
@@ -165,18 +166,48 @@ void Playlist::save()
         return;
     }
 
+    QSettings settings;
+    settings.beginGroup("PLAYLIST");
+
+    // Keep the config file lean: only persist queue state when auto-resume
+    // is explicitly enabled.
+    if (!m_autoResume) {
+        settings.remove("LASTPLAYLIST");
+        settings.remove("PLAYLIST_POS");
+        settings.endGroup();
+        return;
+    }
+
+    constexpr int kMaxResumeEntries = 500;
     QStringList urls;
     const auto count = m_model->getCount();
+    const int savedCount = qMin(count, kMaxResumeEntries);
+    if (savedCount <= 0) {
+        settings.remove("LASTPLAYLIST");
+        settings.setValue("PLAYLIST_POS", -1);
+        settings.endGroup();
+        return;
+    }
 
-    for (int i = 0; i < count; i++) {
+    int start = 0;
+    if (count > savedCount) {
+        const int center = qBound(0, m_currentIndex, count - 1);
+        start = qMax(0, center - (savedCount / 2));
+        if (start + savedCount > count)
+            start = count - savedCount;
+    }
+
+    urls.reserve(savedCount);
+    for (int i = start; i < start + savedCount; ++i) {
         auto url = m_model->get(i).value("url").toString();
         urls << url;
     }
 
-    QSettings settings;
-    settings.beginGroup("PLAYLIST");
+    const int savedIndex = (m_currentIndex >= start && m_currentIndex < start + savedCount)
+            ? m_currentIndex - start
+            : -1;
     settings.setValue("LASTPLAYLIST", urls);
-    settings.setValue("PLAYLIST_POS", m_currentIndex);
+    settings.setValue("PLAYLIST_POS", savedIndex);
     settings.endGroup();
 }
 
@@ -381,9 +412,13 @@ void Playlist::setAutoResume(bool autoResume)
 
 void Playlist::componentComplete()
 {
-    if (m_autoResume) {
-        this->loadLastPlaylist();
-    }
+    // Queue/session persistence is not automatic anymore.
+    // Persisted playlists should be explicit user actions only.
+    QSettings settings;
+    settings.beginGroup("PLAYLIST");
+    settings.remove("LASTPLAYLIST");
+    settings.remove("PLAYLIST_POS");
+    settings.endGroup();
 }
 
 void Playlist::classBegin()

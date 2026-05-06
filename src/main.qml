@@ -9,6 +9,7 @@ import org.mauikit.controls as Maui
 import org.mauikit.filebrowsing  as FB
 
 import org.maui.vvave
+import org.maui.vvave as Vvave
 
 import "widgets"
 import "widgets/PlaylistsView"
@@ -80,6 +81,7 @@ Maui.ApplicationWindow
     property bool selectionMode : false
     property bool _forceClose: false
     property bool _outputSelectionReady: false
+    property int _lastAudibleVolume: 100
 
     /***************************************************/
     /******************** UI COLORS *******************/
@@ -91,7 +93,6 @@ Maui.ApplicationWindow
 
     onClosing: (close) =>
                {
-                   playlist.save()
                    close.accepted = true
                }
 
@@ -567,47 +568,242 @@ Maui.ApplicationWindow
             headBar.visible: false
             footerMargins: Maui.Style.contentMargins
 
-        footBar.rightContent: ToolButton
+        footBar.leftContent: RowLayout
         {
-            visible: focusView
-            icon.name: root.focusView ? "go-down" : "go-up"
-            onClicked: toggleFocusView()
-        }
+            spacing: Maui.Style.space.small
 
-        footBar.middleContent: [
-
-            Maui.ToolActions
+            ToolButton
             {
-                Layout.alignment: Qt.AlignCenter
+                text: i18n("Previous")
+                display: AbstractButton.IconOnly
+                icon.name: "media-skip-backward"
+                enabled: currentTrackIndex >= 0
+                onClicked: Player.previousTrack()
+            }
 
-                display: ToolButton.IconOnly
-                expanded: true
-                autoExclusive: false
-                checkable: false
+            ToolButton
+            {
+                text: i18n("Play and pause")
+                display: AbstractButton.IconOnly
+                enabled: currentTrackIndex >= 0
+                icon.name: isPlaying ? "media-playback-pause" : "media-playback-start"
+                onClicked: player.playing ? player.pause() : player.play()
+            }
 
-                Action
+            ToolButton
+            {
+                text: i18n("Next")
+                display: AbstractButton.IconOnly
+                icon.name: "media-skip-forward"
+                enabled: currentTrackIndex >= 0
+                onClicked: Player.nextTrack()
+            }
+
+            Label
+            {
+                text: player.formatTime_ms(player.elapsed) + " / " + player.formatTime_ms(player.duration)
+                opacity: 0.8
+                Layout.leftMargin: Maui.Style.space.small
+            }
+
+            ToolButton
+            {
+                text: i18n("Shuffle")
+                display: AbstractButton.IconOnly
+                checked: playlist.playMode === Vvave.Playlist.Shuffle
+                icon.name: checked ? "media-playlist-shuffle" : "media-playlist-normal"
+                onClicked: playlist.playMode = checked ? Vvave.Playlist.Normal : Vvave.Playlist.Shuffle
+            }
+
+            ToolButton
+            {
+                text: i18n("Repeat")
+                display: AbstractButton.IconOnly
+                icon.name: switch (playlist.repeatMode)
+                           {
+                           case Vvave.Playlist.NoRepeat: return "media-repeat-none"
+                           case Vvave.Playlist.RepeatOnce: return "media-playlist-repeat-song"
+                           case Vvave.Playlist.Repeat: return "media-playlist-repeat"
+                           }
+                onClicked:
                 {
-                    icon.name: "media-skip-backward"
-                    onTriggered: Player.previousTrack()
-                }
-
-                Action
-                {
-                    id: playIcon
-                    text: i18n("Play and pause")
-                    enabled: currentTrackIndex >= 0
-                    icon.name: isPlaying ? "media-playback-pause" : "media-playback-start"
-                    onTriggered: player.playing ? player.pause() : player.play()
-                }
-
-                Action
-                {
-                    text: i18n("Next")
-                    icon.name: "media-skip-forward"
-                    onTriggered: Player.nextTrack()
+                    switch (playlist.repeatMode)
+                    {
+                    case Vvave.Playlist.NoRepeat:
+                        playlist.repeatMode = Vvave.Playlist.Repeat
+                        break
+                    case Vvave.Playlist.Repeat:
+                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
+                        break
+                    case Vvave.Playlist.RepeatOnce:
+                        playlist.repeatMode = Vvave.Playlist.NoRepeat
+                        break
+                    }
                 }
             }
-        ]
+        }
+
+        footBar.middleContent: RowLayout
+        {
+            spacing: Maui.Style.space.small
+            Layout.alignment: Qt.AlignCenter
+            visible: currentTrackIndex >= 0
+            Layout.maximumWidth: Maui.Style.units.gridUnit * 18
+
+            Rectangle
+            {
+                Layout.preferredWidth: Maui.Style.iconSizes.big + Maui.Style.space.small
+                Layout.preferredHeight: Layout.preferredWidth
+                radius: Maui.Style.radiusS
+                color: Maui.Theme.alternateBackgroundColor
+                clip: true
+
+                Image
+                {
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectCrop
+                    source: "image://artwork/album:"
+                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + ":"
+                            + (currentTrack && currentTrack.album ? currentTrack.album : "")
+                }
+            }
+
+            ColumnLayout
+            {
+                spacing: 0
+                Layout.fillWidth: true
+
+                Label
+                {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignLeft
+                    text: currentTrack && currentTrack.title ? String(currentTrack.title).trim() : i18n("Nothing Playing")
+                    elide: Text.ElideRight
+                    font.weight: Font.DemiBold
+                    leftPadding: 0
+                    rightPadding: 0
+                }
+
+                Label
+                {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignLeft
+                    text: currentTrack && currentTrack.artist
+                          ? (String(currentTrack.artist).trim() + (currentTrack.album ? " • " + String(currentTrack.album).trim() : ""))
+                          : ""
+                    elide: Text.ElideRight
+                    opacity: 0.7
+                    visible: text.length > 0
+                    leftPadding: 0
+                    rightPadding: 0
+                }
+            }
+        }
+
+        footBar.rightContent: RowLayout
+        {
+            spacing: Maui.Style.space.small
+
+            ToolButton
+            {
+                id: _footerVolumeButton
+                text: volumeGlyph(player.volume || 0)
+                display: AbstractButton.TextOnly
+                padding: 0
+                implicitWidth: Maui.Style.iconSizes.medium
+                implicitHeight: Maui.Style.iconSizes.medium
+                font.family: "Font Awesome 6 Free Solid"
+                font.pixelSize: Maui.Style.fontSizes.small
+                font.weight: Font.Black
+                onClicked: toggleFooterMute()
+            }
+
+            Slider
+            {
+                id: _footerVolumeSlider
+                Layout.preferredWidth: Maui.Handy.isMobile ? Maui.Style.units.gridUnit * 4 : Maui.Style.units.gridUnit * 6
+                from: 0
+                to: 100
+                stepSize: 5
+                value: player.volume
+                onMoved: setFooterVolume(value)
+
+                MouseArea
+                {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    hoverEnabled: true
+                    z: 10
+
+                    onWheel: function(wheel)
+                    {
+                        const delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y
+                        if (delta === 0)
+                            return
+
+                        setFooterVolume((_footerVolumeSlider.value || 0) + (delta > 0 ? _footerVolumeSlider.stepSize : -_footerVolumeSlider.stepSize))
+                        wheel.accepted = true
+                    }
+                }
+            }
+
+            ToolButton
+            {
+                visible: focusView
+                icon.name: root.focusView ? "go-down" : "go-up"
+                onClicked: toggleFocusView()
+            }
+        }
+
+        Slider
+        {
+            id: _footerEdgeSeekBar
+            parent: _mainPage.footerContainer ? _mainPage.footerContainer : _mainPage
+            z: 20
+            visible: currentTrackIndex >= 0
+            anchors.left: parent.left
+            anchors.right: parent.right
+            // Inset the track by the footer corner radius so it follows the
+            // rounded top edge instead of crossing into the curved corners.
+            readonly property int edgeInset: Maui.Style.contentMargins + Math.max(Maui.Style.space.small, Maui.Style.radiusV)
+            anchors.leftMargin: edgeInset
+            anchors.rightMargin: edgeInset
+            anchors.top: parent.top
+            anchors.topMargin: -1
+            from: 0
+            to: 1.0
+            value: player.position
+            live: true
+            padding: 0
+            implicitHeight: 10
+            onMoved: player.position = value
+
+            handle: Rectangle
+            {
+                visible: false
+                width: 0
+                height: 0
+            }
+
+            background: Rectangle
+            {
+                x: _footerEdgeSeekBar.leftPadding
+                y: _footerEdgeSeekBar.topPadding + (_footerEdgeSeekBar.availableHeight - height) / 2
+                width: _footerEdgeSeekBar.availableWidth
+                height: 3
+                radius: 2
+                color: Qt.rgba(Maui.Theme.textColor.r, Maui.Theme.textColor.g, Maui.Theme.textColor.b, 0.25)
+
+                Rectangle
+                {
+                    width: _footerEdgeSeekBar.visualPosition * parent.width
+                    height: parent.height
+                    radius: parent.radius
+                    color: Maui.Theme.highlightColor
+                }
+            }
+        }
 
             StackView
             {
@@ -1112,6 +1308,33 @@ Maui.ApplicationWindow
             return null
 
         return ('getGoBackFunc' in currentItem) ? currentItem.getGoBackFunc() : null
+    }
+
+    function setFooterVolume(value)
+    {
+        const clamped = Math.max(0, Math.min(100, Math.round(value)))
+        if (clamped > 0)
+            _lastAudibleVolume = clamped
+
+        player.volume = clamped
+        settings.volume = clamped
+    }
+
+    function toggleFooterMute()
+    {
+        if ((player.volume || 0) > 0)
+            setFooterVolume(0)
+        else
+            setFooterVolume(_lastAudibleVolume > 0 ? _lastAudibleVolume : 100)
+    }
+
+    function volumeGlyph(volume)
+    {
+        if (volume <= 0)
+            return "\uf6a9"
+        if (volume < 50)
+            return "\uf027"
+        return "\uf028"
     }
 
     function setSleepTimer(option)
