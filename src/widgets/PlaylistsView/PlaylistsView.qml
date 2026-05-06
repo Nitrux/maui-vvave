@@ -141,11 +141,6 @@ StackView
         control.push(_filterListComponent, {'currentPlaylist': playlist, 'isPublic': isPublic})
     }
 
-    function getFilterField() : Item
-    {
-        return control.currentItem.getFilterField()
-    }
-
     function getGoBackFunc()
     {
         if (control.depth > 1)

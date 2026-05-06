@@ -87,7 +87,7 @@ Maui.ApplicationWindow
 
     /*HANDLE EVENTS*/
     signal contextualPlayNext()
-    property bool sidebarDebug: true
+    property bool placeholderDebug: true
 
     onClosing: (close) =>
                {
@@ -95,31 +95,75 @@ Maui.ApplicationWindow
                    close.accepted = true
                }
 
-    onFocusViewChanged: setAndroidStatusBarColor()
-
-    function logSidebarState(event, details)
+    onFocusViewChanged:
     {
-        if (!sidebarDebug || !_sideBarView || !_sideBarView.sideBar)
+        setAndroidStatusBarColor()
+        logPlaceholderState("focusViewChanged")
+    }
+
+    onMainlistEmptyChanged: logPlaceholderState("mainlistEmptyChanged")
+    onWidthChanged: logPlaceholderState("windowWidthChanged", width)
+    onHeightChanged: logPlaceholderState("windowHeightChanged", height)
+
+    function currentCategoryName() : string
+    {
+        switch (swipeView ? swipeView.currentIndex : -1)
+        {
+        case viewsIndex.tracks: return "songs"
+        case viewsIndex.albums: return "albums"
+        case viewsIndex.artists: return "artists"
+        case viewsIndex.playlists: return "tags"
+        default: return "unknown"
+        }
+    }
+
+    function logPlaceholderState(event, details)
+    {
+        if (!placeholderDebug)
             return
 
-        const sb = _sideBarView.sideBar
-        let msg = "[VVAVE_SIDEBAR] " + event
-                + " pos=" + sb.position
-                + " visible=" + sb.visible
-                + " collapsed=" + sb.collapsed
-                + " peeking=" + sb.peeking
-                + " resizing=" + sb.resizing
-                + " width=" + sb.width
-                + " y=" + sb.y
-                + " prefWidth=" + sb.preferredWidth
-                + " sideBarHeight=" + sb.height
-                + " panel=" + (_playlistPanel ? (_playlistPanel.width + "x" + _playlistPanel.height + "@" + _playlistPanel.x + "," + _playlistPanel.y) : "n/a")
-                + " root=" + root.width + "x" + root.height
+        const currentView = resolveCurrentCategoryView()
+        const hasHolder = !!(currentView && currentView.holder)
+        const holderVisible = hasHolder ? currentView.holder.visible : false
+        const holderTitle = hasHolder && currentView.holder.title !== undefined ? currentView.holder.title : "<none>"
+        const viewCount = (currentView && currentView.count !== undefined) ? currentView.count : -1
+        const playlistCount = (mainPlaylist && mainPlaylist.listModel && mainPlaylist.listModel.list) ? mainPlaylist.listModel.list.count : -1
+
+        let msg = "[VVAVE_PLACEHOLDER] " + event
+                + " focusView=" + focusView
+                + " category=" + currentCategoryName()
+                + " hasCurrentView=" + (!!currentView)
+                + " hasHolder=" + hasHolder
+                + " holderVisible=" + holderVisible
+                + " holderTitle=" + holderTitle
+                + " viewCount=" + viewCount
+                + " mainPlaylistCount=" + playlistCount
+                + " mainlistEmpty=" + mainlistEmpty
 
         if (details !== undefined && details !== null && details !== "")
             msg += " details=" + details
 
         console.log(msg)
+    }
+
+    function resolveCurrentCategoryView() : Item
+    {
+        if (!swipeView)
+            return null
+
+        switch (swipeView.currentIndex)
+        {
+        case viewsIndex.tracks:
+            return _tracksViewLoader ? _tracksViewLoader.item : null
+        case viewsIndex.albums:
+            return _albumsViewLoader ? _albumsViewLoader.item : null
+        case viewsIndex.artists:
+            return _artistViewLoader ? _artistViewLoader.item : null
+        case viewsIndex.playlists:
+            return _playlistsViewLoader ? _playlistsViewLoader.item : null
+        default:
+            return null
+        }
     }
 
     Loader
@@ -205,14 +249,6 @@ Maui.ApplicationWindow
             readonly property string dialogCategory: "Playback"
             sequence: "-"
             onActivated: player.volume -= 5
-        },
-
-        Shortcut
-        {
-            readonly property string dialogLabel: "Filter"
-            readonly property string dialogCategory: "Navigation"
-            sequences: [StandardKey.Find]
-            onActivated: toggleFilterFocus()
         },
 
         Shortcut
@@ -545,21 +581,6 @@ Maui.ApplicationWindow
         sideBar.autoShow: false
         sideBar.autoHide: true
 
-        Connections
-        {
-            target: _sideBarView.sideBar
-            ignoreUnknownSignals: true
-
-            function onPositionChanged() { logSidebarState("positionChanged") }
-            function onVisibleChanged() { logSidebarState("visibleChanged") }
-            function onCollapsedChanged() { logSidebarState("collapsedChanged") }
-            function onPeekingChanged() { logSidebarState("peekingChanged") }
-            function onResizingChanged() { logSidebarState("resizingChanged") }
-            function onWidthChanged() { logSidebarState("widthChanged") }
-            function onHeightChanged() { logSidebarState("heightChanged") }
-            function onOpened() { logSidebarState("openedSignal") }
-            function onClosed() { logSidebarState("closedSignal") }
-        }
         sideBarContent: Maui.Page
         {
             id: _playlistPanel
@@ -710,6 +731,10 @@ Maui.ApplicationWindow
                 id: swipeView
                 maxViews: 4
                 visible: StackView.status !== StackView.Inactive
+                onCurrentIndexChanged:
+                {
+                    logPlaceholderState("categoryChanged", currentIndex)
+                }
 
                 headerMargins: Maui.Style.contentMargins
                 footerMargins: headerMargins
@@ -730,7 +755,46 @@ Maui.ApplicationWindow
                 Maui.Controls.showCSD: true
                 background: null
 
-                headBar.middleContent: []
+                headBar.forceCenterMiddleContent: true
+                headBar.middleContent: [
+                    RowLayout
+                    {
+                        spacing: Maui.Style.space.small
+                        Layout.alignment: Qt.AlignCenter
+
+                        ToolButton
+                        {
+                            text: i18n("Songs")
+                            display: AbstractButton.IconOnly
+                            icon.name: "view-media-track"
+                            onClicked: showBrowserCategory(viewsIndex.tracks)
+                        }
+
+                        ToolButton
+                        {
+                            text: i18n("Albums")
+                            display: AbstractButton.IconOnly
+                            icon.name: "view-media-album-cover"
+                            onClicked: showBrowserCategory(viewsIndex.albums)
+                        }
+
+                        ToolButton
+                        {
+                            text: i18n("Artists")
+                            display: AbstractButton.IconOnly
+                            icon.name: "view-media-artist"
+                            onClicked: showBrowserCategory(viewsIndex.artists)
+                        }
+
+                        ToolButton
+                        {
+                            text: i18n("Tags")
+                            display: AbstractButton.IconOnly
+                            icon.name: "tag"
+                            onClicked: showBrowserCategory(viewsIndex.playlists)
+                        }
+                    }
+                ]
                 headBar.leftContent: [
                     ToolButton
                     {
@@ -748,56 +812,10 @@ Maui.ApplicationWindow
                     {
                         bottomPadding: 10
                         topPadding: 10
-                    },
+                    }
 
-                    ToolButton
-                    {
-                        text: i18n("Songs")
-                        display: AbstractButton.IconOnly
-                        icon.name: "view-media-track"
-                        onClicked: showBrowserCategory(viewsIndex.tracks)
-                    },
-
-                    ToolButton
-                    {
-                        text: i18n("Albums")
-                        display: AbstractButton.IconOnly
-                        icon.name: "view-media-album-cover"
-                        onClicked: showBrowserCategory(viewsIndex.albums)
-                    },
-
-                    ToolButton
-                    {
-                        text: i18n("Artists")
-                        display: AbstractButton.IconOnly
-                        icon.name: "view-media-artist"
-                        onClicked: showBrowserCategory(viewsIndex.artists)
-                    },
-
-                    ToolButton
-                    {
-                        text: i18n("Tags")
-                        display: AbstractButton.IconOnly
-                        icon.name: "tag"
-                        onClicked: showBrowserCategory(viewsIndex.playlists)
-                    },
-
-                    ToolSeparator
-                    {
-                        bottomPadding: 10
-                        topPadding: 10
-                    },
-
-                    ToolButton
-                    {
-                        text: i18n("Search")
-                        display: AbstractButton.IconOnly
-                        icon.name: "edit-find"
-                        checkable: true
-                        checked: !!getFilterField() && getFilterField().activeFocus
-                        onClicked: toggleFilterFocus()
-                    },
-
+                ]
+                headBar.rightContent: [
                     ToolSeparator
                     {
                         bottomPadding: 10
@@ -810,7 +828,6 @@ Maui.ApplicationWindow
                         sourceComponent: _mainMenuComponent
                     }
                 ]
-                headBar.rightContent: []
 
                 footer: SelectionBar
                 {
@@ -838,26 +855,22 @@ Maui.ApplicationWindow
 
                 Maui.SwipeViewLoader
                 {
-                    Maui.Controls.title: i18n("Songs")
-                    Maui.Controls.iconName: "view-media-track"
-
-                TracksView
-                {
-                    id: _tracksView
+                    id: _tracksViewLoader
+                    TracksView
+                    {
+                        id: _tracksView
+                    }
                 }
-            }
 
                 Maui.SwipeViewLoader
                 {
                     id: _albumsViewLoader
 
-                    Maui.Controls.title: i18n("Albums")
-                    Maui.Controls.iconName: "view-media-album-cover"
-
                     property var pendingAlbum : ({})
 
                     AlbumsView
                     {
+                        id: _albumsView
                         holder.title : i18n("No Albums!")
                         holder.body: i18n("Add new music sources")
                         list.query: Albums.ALBUMS
@@ -875,13 +888,12 @@ Maui.ApplicationWindow
                 Maui.SwipeViewLoader
                 {
                     id: _artistViewLoader
-                    Maui.Controls.title: i18n("Artists")
-                    Maui.Controls.iconName: "view-media-artist"
 
                     property string pendingArtist
 
                     AlbumsView
                     {
+                        id: _artistsView
                         holder.title : i18n("No Artists!")
                         holder.body: i18n("Add new music sources")
                         list.query : Albums.ARTISTS
@@ -900,11 +912,12 @@ Maui.ApplicationWindow
                 Maui.SwipeViewLoader
                 {
                     id: _playlistsViewLoader
-                    Maui.Controls.title: i18n("Tags")
-                    Maui.Controls.iconName: "tag"
                     property string pendingTag
 
-                    PlaylistsView {}
+                    PlaylistsView
+                    {
+                        id: _playlistsView
+                    }
                 }
 
                 data: Loader
@@ -916,20 +929,13 @@ Maui.ApplicationWindow
                     sourceComponent: Maui.ProgressIndicator {}
                 }
 
-                function getFilterField() : Item
-                {
-                    if (!currentItem || !currentItem.item || !currentItem.item.getFilterField)
-                        return null
-
-                    return currentItem.item.getFilterField()
-                }
-
                 function getGoBackFunc()
                 {
-                    if (!currentItem || !currentItem.item)
+                    if (!currentItem)
                         return null
 
-                    return 'getGoBackFunc' in currentItem.item ? currentItem.item.getGoBackFunc() : null
+                    const viewItem = currentItem.item ? currentItem.item : currentItem
+                    return (viewItem && ('getGoBackFunc' in viewItem)) ? viewItem.getGoBackFunc() : null
                 }
             }
 
@@ -963,9 +969,10 @@ Maui.ApplicationWindow
 
     Component.onCompleted:
     {
-        logSidebarState("appCompleted:beforeClose")
         Qt.callLater(() => _sideBarView.sideBar.close())
-        Qt.callLater(() => logSidebarState("appCompleted:afterCloseCall"))
+        Qt.callLater(() => {
+            logPlaceholderState("appCompleted")
+        })
         Vvave.fetchArtwork = settings.fetchArtwork
         Vvave.rescan()
     }
@@ -983,6 +990,8 @@ Maui.ApplicationWindow
 
         if(_stackView.currentItem)
             _stackView.currentItem.forceActiveFocus()
+
+        Qt.callLater(() => logPlaceholderState("toggleFocusView:after"))
     }
 
     function toggleMiniMode()
@@ -1004,9 +1013,7 @@ Maui.ApplicationWindow
 
     function toggleSidebar()
     {
-        logSidebarState("toggleRequested:before")
         _sideBarView.sideBar.toggle()
-        Qt.callLater(() => logSidebarState("toggleRequested:afterCall"))
     }
 
     function handleEscapeShortcut()
@@ -1014,10 +1021,8 @@ Maui.ApplicationWindow
         if (!_sideBarView || !_sideBarView.sideBar || _sideBarView.sideBar.position === 0)
             return false
 
-        logSidebarState("escapeRequested:beforeClose")
         _sideBarView.sideBar.close()
         Qt.callLater(() => {
-            logSidebarState("escapeRequested:afterClose")
             if (_stackView && _stackView.currentItem && _stackView.currentItem.forceActiveFocus)
                 _stackView.currentItem.forceActiveFocus()
         })
@@ -1032,18 +1037,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = index
-    }
-
-    function toggleFilterFocus()
-    {
-        let filterField = getFilterField()
-        if (!filterField)
-            return
-
-        if (!filterField.activeFocus)
-            filterField.forceActiveFocus()
-        else
-            filterField.focus = false
+        Qt.callLater(() => logPlaceholderState("showBrowserCategory", index))
     }
 
     function openShortcutsDialog()
@@ -1134,23 +1128,13 @@ Maui.ApplicationWindow
         return false;
     }
 
-    function getFilterField() : Item
-    {
-        return ('getFilterField' in _stackView.currentItem) ?
-                    _stackView.currentItem.getFilterField() :
-                    null
-    }
-
     function getGoBackFunc()
     {
-        let filterField = getFilterField()
-        if (filterField && filterField.activeFocus) {
-            return () => { filterField.focus = false }
-        } else {
-            return ('getGoBackFunc' in _stackView.currentItem) ?
-                        _stackView.currentItem.getGoBackFunc() :
-                        null
-        }
+        const currentItem = _stackView ? _stackView.currentItem : null
+        if (!currentItem)
+            return null
+
+        return ('getGoBackFunc' in currentItem) ? currentItem.getGoBackFunc() : null
     }
 
     function setSleepTimer(option)

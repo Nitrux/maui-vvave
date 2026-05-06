@@ -11,7 +11,6 @@ import org.mauikit.filebrowsing as FB
 import org.maui.vvave as Vvave
 
 import "../utils/Player.js" as Player
-import "../db/Queries.js" as Q
 
 import "../widgets/InfoView"
 import "VVaveTable"
@@ -85,7 +84,6 @@ StackView
 
         sourceComponent: Maui.Page
         {
-            property alias filterField: _filterField
             Maui.Controls.showCSD: settings.focusViewDefault
             background: null
             headerContainer.margins: Maui.Style.contentMargins
@@ -96,91 +94,14 @@ StackView
                 sourceComponent: _mainMenuComponent
             }
 
-            headBar.middleContent: Maui.TextFieldPopup
-            {
-                id: _filterField
-                placeholderText: i18n("Find")
-                Layout.alignment: Qt.AlignCenter
-                Layout.maximumWidth: 500
-                Layout.fillWidth: true
-                clip: false
-                position: ToolBar.Header
-                KeyNavigation.up: _list
-                KeyNavigation.down: _list
-                //                popup.height: Math.min(500,Math.max(_list.listBrowser.implicitHeight, 300))
-
-                Timer
-                {
-                    id: _typeTimer
-                    interval: 1700
-                    onTriggered:
-                    {
-                        if(_filterField.text.length == 0)
-                        {
-                            _list.list.clear()
-                            return;
-                        }
-
-                        _list.list.query = Q.GET.tracksWhere_.arg("t.title LIKE \"%"+_filterField.text+"%\" OR t.artist LIKE \"%"+_filterField.text+"%\" OR t.album LIKE \"%"+_filterField.text+"%\" OR t.genre LIKE \"%"+_filterField.text+"%\"")
-                    }
-                }
-
-                onTextChanged:
-                {
-                    _typeTimer.start()
-                }
-
-                onClosed: _filterField.clear()
-
-                VVaveTable
-                {
-                    id: _list
-                    headBar.visible: false
-                    anchors.fill: parent
-                    coverArtVisible: settings.showArtwork
-                    clip: true
-
-                    holder.emoji: "qrc:/assets/dialog-information.svg"
-                    holder.title : i18n("No Results!")
-                    holder.body: i18n("Try with something else")
-
-                    onRowClicked: (index) =>
-                                  {
-                                      Player.quickPlay(listModel.get(index))
-                                      _filterField.close()
-                                  }
-
-                    onAppendTrack: (index) =>
-                                   {
-                                       Player.addTrack(listModel.get(index))
-                                   }
-
-                    onPlayAll:
-                    {
-                        Player.playAllModel(listModel.list)
-                        _filterField.close()
-
-                    }
-
-                    onAppendAll:
-                    {
-                        Player.appendAllModel(listModel.list)
-                        _filterField.close()
-                    }
-
-                    onQueueTrack: (index) =>
-                                  {
-                                      Player.queueTracks([listModel.get(index)], index)
-                                  }
-                }
-            }
-
             Maui.Holder
             {
                 anchors.fill: parent
                 visible: mainPlaylist.table.count === 0
+                Maui.Theme.colorSet: Maui.Theme.Window
+                Maui.Theme.inherit: false
                 emoji: "qrc:/assets/view-media-track.svg"
-                title : "Nothing to play!"
+                title : i18n("Nothing to play!")
                 body: i18n("Start putting together your playlist.")
             }
 
@@ -564,8 +485,4 @@ StackView
         forceActiveFocus()
     }
 
-    function getFilterField() : Item
-    {
-        return (control.loader && control.loader.item) ? control.loader.item.filterField : null
-    }
 }

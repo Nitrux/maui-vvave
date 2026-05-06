@@ -23,46 +23,12 @@ Maui.AltBrowser
 
     Maui.Theme.colorSet: Maui.Theme.View
     Maui.Theme.inherit: false
-    headBar.visible: listModel.list.count > 1
+    headBar.visible: listModel.list.count > 0
 
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
     floatingHeader: true
-
-    headBar.middleContent: Loader
-    {
-        id: _filterLoader
-        asynchronous: true
-        active: listModel.list.count > 1
-        visible: active
-
-        Layout.fillWidth: true
-        Layout.minimumWidth: 100
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
-
-        sourceComponent: Maui.SearchField
-        {
-            placeholderText: i18np("Filter", "Filter %1 albums", _albumsList.count)
-
-            KeyNavigation.up: currentView
-            KeyNavigation.down: currentView
-
-            onAccepted:
-            {
-                //                if(text.includes(","))
-                //                {
-                _albumsModel.filters = text.split(",")
-                //                }else
-                {
-                    //                    _albumsModel.filter = text
-                }
-            }
-
-            onCleared: _albumsModel.clearFilters()
-        }
-    }
 
     viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
 
@@ -242,9 +208,4 @@ Maui.AltBrowser
         }
     }
 
-    function getFilterField() : Item
-    {
-        return _filterLoader.item
     }
-    }
-

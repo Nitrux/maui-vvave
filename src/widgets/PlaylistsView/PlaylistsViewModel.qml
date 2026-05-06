@@ -84,21 +84,7 @@ Maui.AltBrowser
     footBar.visible: false
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
-
-    headBar.middleContent: Maui.SearchField
-    {
-        id: _filterField
-        Layout.maximumWidth: 500
-        Layout.fillWidth: true
-        Layout.alignment: Qt.AlignCenter
-        placeholderText: i18np("Filter", "Filter %1 tags", control.count)
-
-        KeyNavigation.up: currentView
-        KeyNavigation.down: currentView
-
-        onAccepted: _playlistsModel.filter = text
-        onCleared: _playlistsModel.filter = ""
-    }
+    headBar.visible: count > 0
 
     headBar.rightContent: ToolButton
     {
@@ -213,8 +199,4 @@ Maui.AltBrowser
         }
     }
 
-    function getFilterField() : Item
-    {
-        return _filterField
-    }
 }

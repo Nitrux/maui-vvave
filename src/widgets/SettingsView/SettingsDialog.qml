@@ -29,8 +29,6 @@ import org.maui.vvave
 Maui.SettingsDialog
 {
     id: control
-    property var backendLabels: [i18n("Automatic")]
-    property var backendValues: [""]
     readonly property var sleepLabels: [
         i18n("Disabled"),
         i18n("15 minutes"),
@@ -47,28 +45,6 @@ Maui.SettingsDialog
         "eot",
         "eop"
     ]
-
-    function updateBackendChoices()
-    {
-        const labels = [i18n("Automatic")]
-        const values = [""]
-        const seen = new Set()
-        for (let i = 0; i < player.outputs.length; ++i) {
-            const backend = player.outputs[i]
-            const text = String(backend).trim()
-            if (!text.length || seen.has(text))
-                continue
-
-            seen.add(text)
-            labels.push(text.charAt(0).toUpperCase() + text.slice(1))
-            values.push(text)
-        }
-
-        backendLabels = labels
-        backendValues = values
-    }
-
-    Component.onCompleted: updateBackendChoices()
 
     Maui.InfoDialog
     {
@@ -93,31 +69,6 @@ Maui.SettingsDialog
     Maui.SectionGroup
     {
         title: i18n("Playback")
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Playback Backend")
-            label2.text: (_outputCombo.currentIndex > 0 && _outputCombo.currentText.length)
-                         ? i18n("Current backend: %1. Use Automatic to let Vvave pick the best available backend.", _outputCombo.currentText)
-                         : i18n("Vvave automatically selects the best available playback backend.")
-
-            ComboBox 
-            {
-                id: _outputCombo
-                model: control.backendLabels
-                onActivated:
-                {
-                    player.preferredOutput = control.backendValues[currentIndex]
-                }
-                Component.onCompleted:
-                {
-                    control.updateBackendChoices()
-                    currentIndex = 0
-                    if (player.preferredOutput !== "")
-                        player.preferredOutput = ""
-                }
-            }
-        }
 
         Maui.FlexSectionItem
         {

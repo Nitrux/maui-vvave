@@ -124,11 +124,6 @@ StackView
         control.currentQuery = query
     }
 
-    function getFilterField() : Item
-    {
-        return control.currentItem.getFilterField()
-    }
-
     function getGoBackFunc()
     {
         if (control.depth > 1)

@@ -50,7 +50,7 @@ Maui.Page
     signal appendAll()
     signal shuffleAll()
 
-    Maui.Theme.colorSet: Maui.Theme.View
+    Maui.Theme.colorSet: Maui.Theme.Window
     Maui.Theme.inherit: false
 
     Maui.Controls.level : Maui.Controls.Secondary
@@ -91,40 +91,6 @@ Maui.Page
                 text: i18n("Append All")
                 onTriggered: appendAll()
             }
-        }
-    }
-
-    headBar.middleContent: Loader
-    {
-        id: _filterLoader
-        asynchronous: true
-        active: listModel.list.count > 1
-        visible: active
-
-        Layout.fillWidth: true
-        Layout.minimumWidth: 100
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
-
-        sourceComponent: Maui.SearchField
-        {
-            placeholderText: i18np("Filter", "Filter %1 songs", listModel.list.count)
-
-            KeyNavigation.up: _listBrowser
-            KeyNavigation.down: _listBrowser
-
-            onAccepted:
-            {
-                if(text.includes(","))
-                {
-                    listModel.filters = text.split(",")
-                }else
-                {
-                    listModel.filter = text
-                }
-            }
-
-            onCleared: listModel.clearFilters()
         }
     }
 
@@ -241,7 +207,7 @@ Maui.Page
     {
         id: _listBrowser
         anchors.fill: parent
-        holder.visible: control.listModel.list.count === 0
+        holder.visible: control.count === 0 || control.listModel.list.count === 0
         enableLassoSelection: true
         selectionMode: root.selectionMode
         currentIndex: -1
@@ -427,8 +393,4 @@ Maui.Page
         _listBrowser.forceActiveFocus()
     }
 
-    function getFilterField() : Item
-    {
-        return _filterLoader.item
-    }
 }
