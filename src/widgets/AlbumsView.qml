@@ -28,15 +28,8 @@ StackView
     initialItem: VVaveGrid
     {
         id: albumsViewGrid
-        holder.emoji: "qrc:/assets/dialog-information.svg"
-        holder.actions:[
-
-            Action
-            {
-                text: i18n("Add sources")
-                onTriggered: openSettingsDialog()
-            }
-        ]
+        holder.emoji: "folder-music"
+        holder.actions: []
 
         onAlbumCoverClicked:(album, artist) => control.populateTable(album, artist)
         onPlayAll: (album, artist) =>

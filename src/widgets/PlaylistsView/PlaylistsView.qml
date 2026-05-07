@@ -52,8 +52,7 @@ StackView
             showTitle: false
             title: currentPlaylist
 
-            holder.emoji: "qrc:/assets/dialog-information.svg"
-            holder.isMask: true
+            holder.emoji: "folder-music"
             holder.title : title
             holder.body: i18n("Your playlist is empty. Start adding new music to it")
 

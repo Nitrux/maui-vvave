@@ -53,22 +53,10 @@ VVaveTable
 
     headBar.visible: Vvave.Vvave.sources.length > 0 && count > 0
     holder.visible: Vvave.Vvave.sources.length === 0 || count === 0
-    holder.emoji: "qrc:/assets/dialog-information.svg"
+    holder.emoji: "folder-music"
     holder.title : i18n("No Tracks!")
     holder.body: i18n("Add new music sources")
-    holder.actions:[
-
-        Action
-        {
-            text: i18n("Add sources")
-            onTriggered: openSettingsDialog()
-        },
-
-        Action
-        {
-            text: i18n("Open file")
-        }
-    ]
+    holder.actions: []
 
     list.query : Q.GET.allTracks
     listModel.sort : "title"

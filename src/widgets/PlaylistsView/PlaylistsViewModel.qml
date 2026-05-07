@@ -26,7 +26,7 @@ Maui.AltBrowser
     gridView.itemSize: 140
     gridView.itemHeight: 180
 
-    holder.emoji:  "qrc:/assets/dialog-information.svg"
+    holder.emoji: "folder-music"
     holder.title : i18n("No Playlists!")
     holder.body: i18n("Start creating new custom playlists")
 
