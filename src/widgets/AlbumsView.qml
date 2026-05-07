@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 
 import org.mauikit.controls as Maui
 
@@ -28,6 +29,7 @@ StackView
     initialItem: VVaveGrid
     {
         id: albumsViewGrid
+        background: null
         holder.emoji: "folder-music"
         holder.actions: []
 
@@ -57,6 +59,7 @@ StackView
             list.query: control.currentQuery
             trackNumberVisible: true
             coverArtVisible: settings.fetchArtwork
+            collapseRepeatedAlbumArt: control.currentAlbum.length === 0
             focus: true
 
             holder.emoji: "qrc:/assets/media-album-track.svg"
@@ -64,11 +67,24 @@ StackView
             holder.body: i18n("This list is empty")
 
             headBar.visible: true
-            headBar.farLeftContent: ToolButton
+            headBar.farLeftContent: RowLayout
             {
-                icon.name: "go-previous"
-                text: control.prefix === "album"  ? i18n("Albums") : i18n("Artists")
-                onClicked: control.pop()
+                spacing: Maui.Style.space.small
+
+                ToolButton
+                {
+                    icon.name: "go-previous"
+                    display: AbstractButton.IconOnly
+                    ToolTip.visible: hovered
+                    ToolTip.text: control.prefix === "album" ? i18n("Back to albums") : i18n("Back to artists")
+                    onClicked: control.pop()
+                }
+
+                ToolSeparator
+                {
+                    topPadding: 10
+                    bottomPadding: 10
+                }
             }
 
             onQueueTrack: (index) => Player.queueTracks([listModel.get(index)], index)

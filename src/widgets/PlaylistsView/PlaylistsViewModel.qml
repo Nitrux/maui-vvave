@@ -8,8 +8,21 @@ import org.maui.vvave as Vvave
 Maui.AltBrowser
 {
     id: control
+    background: null
 
     readonly property alias list: _playlistsList
+
+    function applyPrimarySort(index)
+    {
+        _playlistsModel.sort = "playlist"
+        _playlistsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySecondarySort(index)
+    {
+        _playlistsModel.sort = "key"
+        _playlistsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
 
     function focusSearch()
     {
@@ -30,7 +43,7 @@ Maui.AltBrowser
     holder.title : i18n("No Playlists!")
     holder.body: i18n("Start creating new custom playlists")
 
-    holder.visible: count === 0
+    holder.visible: _playlistsModel.count === 0
 
     Component
     {
@@ -91,14 +104,47 @@ Maui.AltBrowser
     footBar.visible: false
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
-    headBar.visible: count > 0
+    headBar.visible: _playlistsModel.count > 0
 
-    headBar.middleContent: Maui.SearchField
+    headBar.leftContent: RowLayout
+    {
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
+
+        Label
+        {
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        ComboBox
+        {
+            id: _primarySortCombo
+            implicitWidth: 170
+            model: [i18n("Playlist Ascending"), i18n("Playlist Descending")]
+            currentIndex: 0
+            onActivated: applyPrimarySort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _secondarySortCombo
+            implicitWidth: 170
+            model: [i18n("Identifier Ascending"), i18n("Identifier Descending")]
+            currentIndex: 0
+            onActivated: applySecondarySort(currentIndex)
+        }
+    }
+
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
     {
         id: _searchField
-        Layout.fillWidth: true
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
         placeholderText: i18n("Search playlists")
         inputMethodHints: Qt.ImhNoAutoUppercase
         enabled: headBar.visible
@@ -124,7 +170,7 @@ Maui.AltBrowser
         }
     }
 
-    headBar.rightContent: ToolButton
+    headBar.farRightContent: ToolButton
     {
         icon.name: "list-add"
         onClicked:

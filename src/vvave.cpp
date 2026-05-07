@@ -11,6 +11,8 @@
 #include <QSet>
 #include <QSettings>
 #include <QTimer>
+#include <algorithm>
+#include <limits>
 
 #include "utils/bae.h"
 
@@ -36,6 +38,13 @@ bool isAudioFile(const QString &path)
 
     const QFileInfo info(path);
     return info.exists() && info.isFile() && kAudioSuffixes.contains(info.suffix().toLower());
+}
+
+int trackNumberForSort(const FMH::MODEL &track)
+{
+    bool ok = false;
+    const int value = track.value(FMH::MODEL_KEY::TRACK).toInt(&ok);
+    return (ok && value > 0) ? value : std::numeric_limits<int>::max();
 }
 }
 
@@ -207,6 +216,24 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
                     filtered << track;
                 }
             }
+
+            std::stable_sort(filtered.begin(), filtered.end(), [](const FMH::MODEL &a, const FMH::MODEL &b) {
+                const int trackA = trackNumberForSort(a);
+                const int trackB = trackNumberForSort(b);
+
+                if (trackA != trackB) {
+                    return trackA < trackB;
+                }
+
+                const QString titleA = a.value(FMH::MODEL_KEY::TITLE);
+                const QString titleB = b.value(FMH::MODEL_KEY::TITLE);
+                const int titleCompare = QString::localeAwareCompare(titleA, titleB);
+                if (titleCompare != 0) {
+                    return titleCompare < 0;
+                }
+
+                return QString::localeAwareCompare(a.value(FMH::MODEL_KEY::URL), b.value(FMH::MODEL_KEY::URL)) < 0;
+            });
 
             return filtered;
         }

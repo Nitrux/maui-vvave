@@ -7,6 +7,7 @@
 #include <MauiKit4/FileBrowsing/downloader.h>
 
 #include <QImage>
+#include <QUrl>
 
 AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requestedSize)
     : m_id(id)
@@ -25,10 +26,10 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     QString artist, album;
 
     if (parts.length() >= 2)
-        artist = parts[1];
+        artist = QUrl::fromPercentEncoding(parts[1].toUtf8());
 
     if (parts.length() >= 3)
-        album = parts[2];
+        album = QUrl::fromPercentEncoding(parts[2].toUtf8());
 
     FMH::MODEL_KEY m_type = FMH::MODEL_KEY::ID;
     if (type == "artist") {
@@ -88,15 +89,22 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
     request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
         qDebug() << "DONE WITH " << request.track;
 
+        bool requestedDownload = false;
+
         for (const auto &res : responses) {
             if (res.context == PULPO::PULPO_CONTEXT::IMAGE) {
                 auto imageUrl = res.value.toString();
 
                 if (!imageUrl.isEmpty()) {
+                    requestedDownload = true;
                     auto downloader = new FMH::Downloader;
                     QObject::connect(downloader, &FMH::Downloader::fileSaved, [&, downloader](QString path) mutable {
                         downloader->deleteLater();
                         Q_EMIT this->artworkReady(QUrl::fromLocalFile(path));
+                    });
+                    QObject::connect(downloader, &FMH::Downloader::warning, [&, downloader](const QString &) mutable {
+                        downloader->deleteLater();
+                        Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
                     });
 
                     const auto format = res.value.toUrl().fileName().endsWith(".png") ? ".png" : ".jpg";
@@ -106,11 +114,13 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
 
                     downloader->downloadFile(QUrl(imageUrl), QUrl(BAE::CachePath.toString() + name + format));
                     qDebug() << "SAVING ARTWORK FOR: " << request.track[FMH::MODEL_KEY::ALBUM] << BAE::CachePath.toString() + name + format;
-
-                } else {
-                    Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
+                    break;
                 }
             }
+        }
+
+        if (!requestedDownload) {
+            Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
         }
     };
 

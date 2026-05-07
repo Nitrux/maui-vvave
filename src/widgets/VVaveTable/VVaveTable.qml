@@ -33,6 +33,7 @@ Maui.Page
 
     property bool trackNumberVisible : false
     property bool coverArtVisible : false
+    property bool collapseRepeatedAlbumArt : true
     property bool allowMenu: true
     property bool showQuickActions : true
     property bool group : false
@@ -325,7 +326,7 @@ Maui.Page
             sameAlbum:
             {
                 const item = listModel.get(index-1)
-                return coverArt && item && item.album === album && item.artist === artist
+                return control.collapseRepeatedAlbumArt && coverArt && item && item.album === album && item.artist === artist
             }
 
             onClicked: (mouse) =>

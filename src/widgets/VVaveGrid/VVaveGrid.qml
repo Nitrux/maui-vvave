@@ -13,8 +13,9 @@ Maui.AltBrowser
     property alias listModel: _albumsModel
 
     readonly property string prefix : list.query === Albums.ALBUMS ? "album" : "artist"
+    readonly property string primarySortRole: prefix === "album" ? "album" : "artist"
+    readonly property string secondarySortRole: prefix === "album" ? "artist" : "album"
 
-    readonly property int count: currentView.count
 
     signal albumCoverClicked(string album, string artist)
     signal playAll(string album, string artist)
@@ -29,10 +30,30 @@ Maui.AltBrowser
         listModel.filterRole = searchRole()
     }
 
+    function applyPrimarySort(index)
+    {
+        listModel.sort = primarySortRole
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySecondarySort(index)
+    {
+        listModel.sort = secondarySortRole
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
     function focusSearch()
     {
         if (headBar.visible)
             _searchField.forceActiveFocus()
+    }
+
+    function artworkSourceFor(artist, album)
+    {
+        const safeArtist = encodeURIComponent(String(artist || ""))
+        const safeAlbum = encodeURIComponent(String(album || ""))
+        const payload = control.prefix === "album" ? (safeArtist + ":" + safeAlbum) : safeArtist
+        return "image://artwork/" + control.prefix + ":" + payload
     }
 
     Maui.Controls.level : Maui.Controls.Secondary
@@ -45,14 +66,51 @@ Maui.AltBrowser
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
-    floatingHeader: true
+    floatingHeader: false
 
-    headBar.middleContent: Maui.SearchField
+    headBar.leftContent: RowLayout
+    {
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
+
+        Label
+        {
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        ComboBox
+        {
+            id: _primarySortCombo
+            implicitWidth: 170
+            model: prefix === "album"
+                   ? [i18n("Album Ascending"), i18n("Album Descending")]
+                   : [i18n("Artist Ascending"), i18n("Artist Descending")]
+            currentIndex: 0
+            onActivated: applyPrimarySort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _secondarySortCombo
+            implicitWidth: 170
+            model: prefix === "album"
+                   ? [i18n("Artist Ascending"), i18n("Artist Descending")]
+                   : [i18n("Album Ascending"), i18n("Album Descending")]
+            currentIndex: 0
+            onActivated: applySecondarySort(currentIndex)
+        }
+    }
+
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
     {
         id: _searchField
-        Layout.fillWidth: true
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
         placeholderText: prefix === "album" ? i18n("Search albums") : i18n("Search artists")
         inputMethodHints: Qt.ImhNoAutoUppercase
         enabled: headBar.visible
@@ -84,7 +142,7 @@ Maui.AltBrowser
     gridView.itemHeight: 180
     gridView.flickable.reuseItems: true
     listView.flickable.reuseItems: true
-    holder.visible: count === 0
+    holder.visible: listModel.list.count === 0
 
     property string typingQuery
 
@@ -161,7 +219,7 @@ Maui.AltBrowser
         label1.text: model.album ? model.album : model.artist
         label2.text: model.artist && model.album ? model.artist : ""
         iconSource: "folder-music"
-        imageSource: "image://artwork/%1:".arg(control.prefix)+( control.prefix === "album" ? model.artist+":"+model.album : model.artist)
+        imageSource: artworkSourceFor(model.artist, model.album)
         maskRadius: Maui.Style.radiusV
 
         onClicked:
@@ -204,7 +262,7 @@ Maui.AltBrowser
             label1.text: model.album ? model.album : model.artist
             label2.text: model.artist && model.album ? model.artist : ""
 
-            imageSource: "image://artwork/%1:".arg(control.prefix)+( control.prefix === "album" ? model.artist+":"+model.album : model.artist)
+            imageSource: artworkSourceFor(model.artist, model.album)
 
             iconSource: "media-album-cover"
 

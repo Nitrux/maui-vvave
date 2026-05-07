@@ -24,6 +24,7 @@ Maui.Page
     property alias listModel: table.listModel
     readonly property alias listView : table.listView
     readonly property alias table: table
+    property bool collapseRepeatedAlbumArt: false
 
     readonly property alias contextMenu: table.contextMenu
 
@@ -313,7 +314,7 @@ Maui.Page
 
             function evaluate(item)
             {
-                return coverArt && item && item.album === model.album && item.artist === model.artist
+                return control.collapseRepeatedAlbumArt && coverArt && item && item.album === model.album && item.artist === model.artist
             }
 
                 Item
