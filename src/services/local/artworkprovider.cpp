@@ -6,30 +6,54 @@
 
 #include <MauiKit4/FileBrowsing/downloader.h>
 
+#include <QDebug>
+#include <QFileInfo>
 #include <QImage>
+#include <QPointer>
+#include <QTimer>
 #include <QUrl>
+
+void AsyncImageResponse::finishWithImage(const QImage &image)
+{
+    if (m_completed) {
+        return;
+    }
+
+    m_image = image;
+    m_completed = true;
+    Q_EMIT this->finished();
+}
 
 AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requestedSize)
     : m_id(id)
     , m_requestedSize(requestedSize)
 {
-    auto parts = id.split(":");
+    qDebug() << "[ARTWORK] request id=" << id << "requestedSize=" << requestedSize;
+    const auto parts = id.split(":", Qt::KeepEmptyParts);
 
     if (parts.isEmpty()) {
-        m_image = QImage(":/assets/cover.png");
-        Q_EMIT this->finished();
+        qWarning() << "[ARTWORK] invalid request id, using cover fallback";
+        finishWithImage(QImage(":/assets/cover.png"));
         return;
     }
 
-    auto type = parts[0];
+    const auto type = parts[0];
 
     QString artist, album;
 
     if (parts.length() >= 2)
         artist = QUrl::fromPercentEncoding(parts[1].toUtf8());
 
-    if (parts.length() >= 3)
-        album = QUrl::fromPercentEncoding(parts[2].toUtf8());
+    if (parts.length() >= 3) {
+        QString albumPayload = parts[2];
+        for (int i = 3; i < parts.length(); ++i) {
+            albumPayload += ":";
+            albumPayload += parts[i];
+        }
+        album = QUrl::fromPercentEncoding(albumPayload.toUtf8());
+    }
+
+    qDebug() << "[ARTWORK] parsed type=" << type << "artist=" << artist << "album=" << album;
 
     FMH::MODEL_KEY m_type = FMH::MODEL_KEY::ID;
     if (type == "artist") {
@@ -41,29 +65,59 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     FMH::MODEL data = {{FMH::MODEL_KEY::ARTIST, artist}, {FMH::MODEL_KEY::ALBUM, album}};
 
     if (BAE::artworkCache(data, m_type)) {
-        qDebug() << "ARTWORK CACHED" << album << artist;
-        m_image = QImage(QUrl(data[FMH::MODEL_KEY::ARTWORK]).toLocalFile());
-        Q_EMIT this->finished();
+        const auto cachedPath = QUrl(data[FMH::MODEL_KEY::ARTWORK]).toLocalFile();
+        const auto cachedImage = QImage(cachedPath);
+        qDebug() << "[ARTWORK] cache-hit path=" << cachedPath << "isNull=" << cachedImage.isNull();
+        if (cachedImage.isNull()) {
+            qWarning() << "[ARTWORK] cached image failed to decode, using cover fallback";
+            finishWithImage(QImage(":/assets/cover.png"));
+        } else {
+            finishWithImage(cachedImage);
+        }
     } else if (vvave::instance()->fetchArtwork()) {
+        qDebug() << "[ARTWORK] cache-miss, fetching online for" << artist << album;
         auto m_artworkFetcher = new ArtworkFetcher;
+        QPointer<ArtworkFetcher> guardedFetcher(m_artworkFetcher);
         connect(m_artworkFetcher, &ArtworkFetcher::finished, m_artworkFetcher, &ArtworkFetcher::deleteLater);
 
         connect(m_artworkFetcher, &ArtworkFetcher::artworkReady, [this, m_artworkFetcher](QUrl url) {
-            qDebug() << "FILE ARTWORK READY" << url;
+            qDebug() << "[ARTWORK] fetch-finished url=" << url;
             if (url.isEmpty() || !url.isLocalFile()) {
-                m_image = QImage(":/assets/cover.png");
+                qWarning() << "[ARTWORK] non-local/empty fetch result, using cover fallback";
+                finishWithImage(QImage(":/assets/cover.png"));
             } else {
-                this->m_image = QImage(url.toLocalFile());
+                const auto localPath = url.toLocalFile();
+                const auto fetchedImage = QImage(localPath);
+                qDebug() << "[ARTWORK] loaded fetched path=" << localPath
+                         << "exists=" << QFileInfo::exists(localPath)
+                         << "isNull=" << fetchedImage.isNull();
+                if (fetchedImage.isNull()) {
+                    qWarning() << "[ARTWORK] fetched image failed to decode, using cover fallback";
+                    finishWithImage(QImage(":/assets/cover.png"));
+                } else {
+                    finishWithImage(fetchedImage);
+                }
             }
 
-            Q_EMIT this->finished();
             m_artworkFetcher->deleteLater();
+        });
+
+        QTimer::singleShot(4000, this, [this, guardedFetcher]() {
+            if (m_completed) {
+                return;
+            }
+
+            qWarning() << "[ARTWORK] fetch timeout reached, using cover fallback";
+            if (guardedFetcher) {
+                guardedFetcher->deleteLater();
+            }
+            finishWithImage(QImage(":/assets/cover.png"));
         });
 
         m_artworkFetcher->fetch(data, m_type == FMH::MODEL_KEY::ALBUM ? PULPO::ONTOLOGY::ALBUM : PULPO::ONTOLOGY::ARTIST);
     } else {
-        m_image = QImage(":/assets/cover.png");
-        Q_EMIT this->finished();
+        qDebug() << "[ARTWORK] cache-miss and fetch disabled, using cover fallback";
+        finishWithImage(QImage(":/assets/cover.png"));
     }
 }
 
@@ -80,30 +134,33 @@ QQuickImageResponse *ArtworkProvider::requestImageResponse(const QString &id, co
 
 void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
 {
-    qDebug() << "FETCHING ARTWORKS FROM THREAD";
+    qDebug() << "[ARTWORK] fetch-start ontology=" << static_cast<int>(ontology) << "track=" << data;
     PULPO::REQUEST request;
     request.track = data;
     request.ontology = ontology;
     request.services = {PULPO::SERVICES::LastFm, PULPO::SERVICES::Spotify};
     request.info = {PULPO::INFO::ARTWORK};
     request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
-        qDebug() << "DONE WITH " << request.track;
+        qDebug() << "[ARTWORK] fetch-callback responses=" << responses.size() << "track=" << request.track;
 
         bool requestedDownload = false;
 
         for (const auto &res : responses) {
             if (res.context == PULPO::PULPO_CONTEXT::IMAGE) {
                 auto imageUrl = res.value.toString();
+                qDebug() << "[ARTWORK] response image-url=" << imageUrl;
 
                 if (!imageUrl.isEmpty()) {
                     requestedDownload = true;
                     auto downloader = new FMH::Downloader;
                     QObject::connect(downloader, &FMH::Downloader::fileSaved, [&, downloader](QString path) mutable {
                         downloader->deleteLater();
+                        qDebug() << "[ARTWORK] download-saved path=" << path;
                         Q_EMIT this->artworkReady(QUrl::fromLocalFile(path));
                     });
-                    QObject::connect(downloader, &FMH::Downloader::warning, [&, downloader](const QString &) mutable {
+                    QObject::connect(downloader, &FMH::Downloader::warning, [&, downloader](const QString &message) mutable {
                         downloader->deleteLater();
+                        qWarning() << "[ARTWORK] download-warning:" << message << "using cover fallback";
                         Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
                     });
 
@@ -113,13 +170,15 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
                     BAE::fixArtworkImageFileName(name);
 
                     downloader->downloadFile(QUrl(imageUrl), QUrl(BAE::CachePath.toString() + name + format));
-                    qDebug() << "SAVING ARTWORK FOR: " << request.track[FMH::MODEL_KEY::ALBUM] << BAE::CachePath.toString() + name + format;
+                    qDebug() << "[ARTWORK] downloading for album=" << request.track[FMH::MODEL_KEY::ALBUM]
+                             << "target=" << BAE::CachePath.toString() + name + format;
                     break;
                 }
             }
         }
 
         if (!requestedDownload) {
+            qWarning() << "[ARTWORK] no downloadable image in responses, using cover fallback";
             Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
         }
     };
@@ -127,6 +186,7 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
     auto pulpo = new Pulpo;
     QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
     QObject::connect(pulpo, &Pulpo::error, [this, pulpo]() {
+        qWarning() << "[ARTWORK] pulpo request error, using cover fallback";
         Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
         pulpo->deleteLater();
     });

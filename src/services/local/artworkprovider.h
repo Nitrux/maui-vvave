@@ -25,9 +25,12 @@ public:
     QQuickTextureFactory *textureFactory() const override;
 
 private:
+    void finishWithImage(const QImage &image);
+
     QString m_id;
     QSize m_requestedSize;
     QImage m_image;
+    bool m_completed = false;
 };
 
 class ArtworkProvider : public QQuickAsyncImageProvider

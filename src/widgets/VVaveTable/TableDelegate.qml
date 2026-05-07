@@ -22,7 +22,7 @@ Maui.ListBrowserDelegate
 
     isCurrentItem: ListView.isCurrentItem || checked
     draggable: true
-    iconSource: "media-album-cover"
+    iconSource: ""
 
     template.isMask: true
 
@@ -30,7 +30,7 @@ Maui.ListBrowserDelegate
     label2.text: control.artist + " | " + control.album
     label2.visible: control.coverArt ? !control.sameAlbum : true
 
-    iconVisible: !control.sameAlbum && control.coverArt
-    imageSource: coverArt ? "image://artwork/album:"+ control.artist+":"+control.album : ""
+    iconVisible: false
+    imageSource: coverArt ? "image://artwork/album:" + encodeURIComponent(String(control.artist || "")) + ":" + encodeURIComponent(String(control.album || "")) : ""
 
 }
