@@ -117,8 +117,12 @@ function playAll(tracks)
     sync = false
     syncPlaylist = ""
 
+    player.stop()
     root.playlistManager.clear()
     appendAll(tracks)
+
+    if (!tracks || tracks.length === 0)
+        return
 
     mainPlaylist.listView.positionViewAtBeginning()
     playAt(0)
@@ -148,8 +152,12 @@ function playAllModel(model)
     sync = false
     syncPlaylist = ""
 
+    player.stop()
     root.playlistManager.clear()
     appendAllModel(model)
+
+    if (!model || model.count === 0)
+        return
 
     mainPlaylist.listView.positionViewAtBeginning()
     playAt(0)
@@ -160,8 +168,12 @@ function shuffleAllModel(model)
     sync = false
     syncPlaylist = ""
 
+    player.stop()
     root.playlistManager.clear()
     appendAllModel(model)
+
+    if (!model || model.count === 0)
+        return
 
     mainPlaylist.listView.positionViewAtBeginning()
     root.playlistManager.playMode = Vvave.Playlist.Shuffle

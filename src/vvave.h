@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QColor>
 #include <QObject>
 #include <QStringList>
 
@@ -40,6 +41,7 @@ public Q_SLOTS:
     static FMH::MODEL trackInfo(const QUrl &url);
 
     QString artworkUrl(const QString &artist, const QString &album);
+    QColor artworkAccent(const QString &artist, const QString &album);
 
     /**
      * @brief Get tracks matching a lightweight query.

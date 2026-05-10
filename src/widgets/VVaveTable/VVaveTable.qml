@@ -325,8 +325,12 @@ Maui.Page
 
             sameAlbum:
             {
-                const item = listModel.get(index-1)
-                return control.collapseRepeatedAlbumArt && coverArt && item && item.album === album && item.artist === artist
+                if (!control.collapseRepeatedAlbumArt || !coverArt || index <= 0 || index >= listModel.count) {
+                    return false
+                }
+
+                const item = listModel.get(index - 1)
+                return !!item && item.album === album && item.artist === artist
             }
 
             onClicked: (mouse) =>

@@ -48,9 +48,9 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     widgets/TracksView.qml
     widgets/AlbumsView.qml
     widgets/MainPlaylist/MainPlaylist.qml
-    widgets/PlaylistsView/PlaylistsView.qml
+    widgets/TagsView/TagsView.qml
     widgets/InfoView/InfoView.qml
-    widgets/PlaylistsView/PlaylistsViewModel.qml
+    widgets/TagsView/TagsViewModel.qml
     widgets/FloatingDisk.qml
     widgets/SelectionBar.qml
     widgets/FocusView.qml
@@ -61,7 +61,6 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     widgets/VVaveTable/TableMenu.qml
     widgets/VVaveTable/VVaveTable.qml
     widgets/VVaveGrid/VVaveGrid.qml
-    widgets/MiniMode.qml
 
     utils/Player.js
     db/Queries.js)

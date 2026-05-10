@@ -55,6 +55,28 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
 
     qDebug() << "[ARTWORK] parsed type=" << type << "artist=" << artist << "album=" << album;
 
+    const auto isUnknownMetadata = [](const QString &value) {
+        const QString normalized = value.trimmed();
+        if (normalized.isEmpty()) {
+            return true;
+        }
+
+        if (normalized.compare(BAE::SLANG[BAE::W::UNKNOWN], Qt::CaseInsensitive) == 0) {
+            return true;
+        }
+
+        return normalized.compare(QStringLiteral("UNKNOWN"), Qt::CaseInsensitive) == 0;
+    };
+
+    const bool unknownArtist = isUnknownMetadata(artist);
+    const bool unknownAlbum = isUnknownMetadata(album);
+
+    if ((type == "artist" && unknownArtist) || (type == "album" && (unknownArtist || unknownAlbum))) {
+        qDebug() << "[ARTWORK] unknown metadata, using cover fallback";
+        finishWithImage(QImage(":/assets/cover.png"));
+        return;
+    }
+
     FMH::MODEL_KEY m_type = FMH::MODEL_KEY::ID;
     if (type == "artist") {
         m_type = FMH::MODEL_KEY::ARTIST;

@@ -6,13 +6,9 @@ import QtQuick.Layouts
 import QtQuick.Effects
 
 import org.mauikit.controls as Maui
-import org.mauikit.filebrowsing as FB
-
-import org.maui.vvave as Vvave
 
 import "../utils/Player.js" as Player
 
-import "../widgets/InfoView"
 import "VVaveTable"
 
 StackView
@@ -24,35 +20,21 @@ StackView
 
     property alias loader: _loader
 
-    readonly property string progressTimeLabel: player.formatTime_ms(player.elapsed)
-    readonly property string durationTimeLabel: player.formatTime_ms(player.duration)
+    function artworkSourceFor(artist, album)
+    {
+        const artistName = String(artist || "").trim()
+        const albumName = String(album || "").trim()
 
-    Maui.Style.adaptiveColorSchemeSource : Vvave.Vvave.artworkUrl(
-                                               currentTrack && currentTrack.artist ? currentTrack.artist : "",
-                                               currentTrack && currentTrack.album ? currentTrack.album : "")
+        if (artistName.length > 0 && albumName.length > 0)
+            return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
+
+        if (artistName.length > 0)
+            return "image://artwork/artist:" + encodeURIComponent(artistName)
+
+        return "qrc:/assets/cover.png"
+    }
 
     background: null
-
-    Component
-    {
-        id: _infoComponent
-
-        InfoView
-        {
-            headBar.background: null
-            headBar.leftContent: ToolButton
-            {
-                icon.name: control.depth === 2 ? "go-previous" : "go-down"
-                onClicked:
-                {
-                    if(control.depth === 2)
-                    {
-                        control.pop()
-                    }
-                }
-            }
-        }
-    }
 
     Loader
     {
@@ -113,6 +95,7 @@ StackView
 
                 Loader
                 {
+                    id: _artworkListLoader
                     asynchronous: true
                     active: mainPlaylist
 
@@ -136,6 +119,12 @@ StackView
                         {
                             value: currentTrackIndex
                             restoreMode: Binding.RestoreBindingOrValue
+                        }
+
+                        onCurrentIndexChanged:
+                        {
+                            if (currentIndex >= 0)
+                                positionViewAtIndex(currentIndex, ListView.Center)
                         }
 
                         spacing: 0
@@ -167,6 +156,7 @@ StackView
 
                         delegate: ColumnLayout
                         {
+                            id: _artworkDelegate
                             height: ListView.view.height
                             width: ListView.view.width
                             spacing: Maui.Style.space.big
@@ -216,13 +206,7 @@ StackView
                                     smooth: true
                                     asynchronous: true
 
-                                    source: "image://artwork/album:"+model.artist + ":"+ model.album || "image://artwork/artist:"+model.artist
-
-                                    onStatusChanged:
-                                    {
-                                        if (status == Image.Error)
-                                            source = "qrc:/assets/cover.png";
-                                    }
+                                    source: control.artworkSourceFor(model.artist, model.album)
 
                                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                                     layer.effect: MultiEffect
@@ -288,188 +272,6 @@ StackView
                     }
                 }
 
-                Loader
-                {
-                    asynchronous: true
-                    active: true
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 300
-
-                    Layout.alignment: Qt.AlignHCenter
-                    sourceComponent:  RowLayout
-                    {
-                        spacing: Maui.Style.space.small
-
-                        Maui.Icon
-                        {
-                            implicitHeight: Maui.Style.iconSizes.small
-                            implicitWidth: implicitHeight
-                            source: "audio-volume-low"
-                        }
-
-                        Slider
-                        {
-                            Layout.fillWidth: true
-                            padding: 0
-                            spacing: 0
-                            from: 1
-                            to: 100
-                            value: player.volume
-
-                            orientation: Qt.Horizontal
-
-                            onMoved:
-                            {
-                                settings.volume = value
-                            }
-                        }
-
-                        Maui.Icon
-                        {
-                            implicitHeight: Maui.Style.iconSizes.small
-                            implicitWidth: implicitHeight
-                            source: "audio-volume-high"
-                        }
-                    }
-                }
-
-                Loader
-                {
-                    asynchronous: true
-                    Layout.fillWidth: true
-                    sourceComponent: Maui.ToolBar
-                    {
-
-                        background: null
-                        middleContent: Row
-                        {
-                            Layout.alignment: Qt.AlignCenter
-                            spacing: Maui.Style.defaultSpacing
-
-                            FB.FavButton
-                            {
-                                enabled: root.currentTrack
-                                url: root.currentTrack ? (root.currentTrack.url || "") : ""
-                            }
-
-                            ToolButton
-                            {
-
-                                flat: true
-                                text: i18n("Info")
-                                display: ToolButton.IconOnly
-                                icon.name: "documentinfo"
-                                checkable: true
-                                checked: control.depth === 2
-                                onClicked:
-                                {
-                                    if(control.depth === 2)
-                                    {
-                                        control.pop()
-                                    }else
-                                    {
-                                        control.push(_infoComponent)
-                                    }
-                                }
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Mini Mode")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "window"
-                                onClicked: toggleMiniMode()
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Share")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "document-share"
-                                onClicked:
-                                {
-                                    if(currentTrack && currentTrack.url)
-                                        Maui.Platform.shareFiles([currentTrack.url])
-                                }
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Save")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "tag"
-                                onClicked:
-                                {
-                                    if(currentTrack && currentTrack.url)
-                                        tagUrls([currentTrack.url])
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Loader
-                {
-                    asynchronous: true
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 600
-                    Layout.margins: Maui.Style.space.medium
-                    Layout.alignment: Qt.AlignCenter
-
-                    sourceComponent: ColumnLayout
-                    {
-
-                        spacing: 0
-
-                        RowLayout
-                        {
-                            Layout.fillWidth: true
-
-                            Label
-                            {
-                                visible: text.length
-                                Layout.fillWidth: true
-                                verticalAlignment: Qt.AlignVCenter
-                                horizontalAlignment: Qt.AlignLeft
-                                text: control.progressTimeLabel
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                            }
-
-                            Item
-                            {
-                                Layout.fillWidth: true
-                            }
-
-                            Label
-                            {
-                                visible: text.length
-                                Layout.fillWidth: true
-                                verticalAlignment: Qt.AlignVCenter
-                                horizontalAlignment: Qt.AlignRight
-                                text: control.durationTimeLabel
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                            }
-                        }
-
-                        Slider
-                        {
-                            Layout.fillWidth: true
-
-                            padding: 0
-                            from: 0
-                            to: 1.0
-                            value: player.position
-                            spacing: 0
-                            focus: true
-                            onMoved: player.position = value
-                        }
-                    }
-                }
             }
         }
     }

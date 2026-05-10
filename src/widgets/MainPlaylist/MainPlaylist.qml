@@ -211,7 +211,6 @@ Maui.Page
                     {
                         id:_mouseArea
                         anchors.fill: parent
-                        onDoubleClicked: toggleMiniMode()
                         hoverEnabled: true
 
                         Rectangle
@@ -222,16 +221,6 @@ Maui.Page
                             opacity: parent.pressed ? 0.8 : 0.6
                         }
 
-                        Maui.Icon
-                        {
-                            visible: parent.containsMouse
-
-                            source: "window"
-                            color: Maui.Theme.textColor
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.margins: Maui.Style.space.medium
-                        }
                     }
                 }
 
@@ -310,11 +299,15 @@ Maui.Page
                     table.openItemMenu(index)
             }
 
-            sameAlbum: control.totalMoves, evaluate(listModel.get(mindex-1))
+            sameAlbum: control.totalMoves, evaluate()
 
-            function evaluate(item)
+            function evaluate()
             {
-                return control.collapseRepeatedAlbumArt && coverArt && item && item.album === model.album && item.artist === model.artist
+                if (!control.collapseRepeatedAlbumArt || !coverArt || mindex <= 0 || mindex >= listModel.count)
+                    return false
+
+                const item = listModel.get(mindex - 1)
+                return !!item && item.album === model.album && item.artist === model.artist
             }
 
                 Item

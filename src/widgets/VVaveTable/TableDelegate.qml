@@ -11,8 +11,8 @@ Maui.ListBrowserDelegate
     property bool number : false
     property bool coverArt : false
 
-    readonly property string artist : model.artist
-    readonly property string album : model.album
+    readonly property string artist : String(model.artist || "").trim()
+    readonly property string album : String(model.album || "").trim()
     readonly property string title : model.title
     readonly property url url : model.url
     readonly property int track : model.track
@@ -22,7 +22,7 @@ Maui.ListBrowserDelegate
 
     isCurrentItem: ListView.isCurrentItem || checked
     draggable: true
-    iconSource: ""
+    iconSource: "qrc:/assets/cover.png"
 
     template.isMask: true
 
@@ -30,7 +30,7 @@ Maui.ListBrowserDelegate
     label2.text: control.artist + " | " + control.album
     label2.visible: control.coverArt ? !control.sameAlbum : true
 
-    iconVisible: false
+    iconVisible: !control.sameAlbum && control.coverArt
     imageSource: coverArt ? "image://artwork/album:" + encodeURIComponent(String(control.artist || "")) + ":" + encodeURIComponent(String(control.album || "")) : ""
 
 }

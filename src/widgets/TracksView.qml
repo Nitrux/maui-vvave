@@ -51,6 +51,20 @@ VVaveTable
         return year > 0 ? String(year) : ""
     }
 
+    function artworkSourceFor(artist, album)
+    {
+        const artistName = String(artist || "").trim()
+        const albumName = String(album || "").trim()
+
+        if (artistName.length === 0 || albumName.length === 0)
+            return "qrc:/assets/cover.png"
+
+        if (artistName.toUpperCase() === "UNKNOWN" || albumName.toUpperCase() === "UNKNOWN")
+            return "qrc:/assets/cover.png"
+
+        return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
+    }
+
     headBar.visible: Vvave.Vvave.sources.length > 0 && count > 0
     holder.visible: Vvave.Vvave.sources.length === 0 || count === 0
     holder.emoji: "folder-music"
@@ -269,7 +283,7 @@ VVaveTable
                         Image
                         {
                             anchors.fill: parent
-                            source: "image://artwork/album:" + model.artist + ":" + model.album
+                            source: control.artworkSourceFor(model.artist, model.album)
                             fillMode: Image.PreserveAspectCrop
                         }
                     }

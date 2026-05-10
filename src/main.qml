@@ -11,7 +11,7 @@ import org.mauikit.filebrowsing  as FB
 import org.maui.vvave
 
 import "widgets"
-import "widgets/PlaylistsView"
+import "widgets/TagsView"
 import "widgets/MainPlaylist"
 import "widgets/SettingsView"
 
@@ -21,7 +21,7 @@ Maui.ApplicationWindow
 {
     id: root
 
-    visible: !miniMode
+    visible: true
     title: (currentTrack && currentTrack.url) ? currentTrack.title + " - " +  currentTrack.artist + " | " + currentTrack.album : ""
     color: "transparent"
     background: null
@@ -38,11 +38,25 @@ Maui.ApplicationWindow
     {
         anchors.fill: parent
         color: Maui.Theme.backgroundColor
-        opacity: 0.76
+        opacity: focusView ? 0.94 : 0.76
         radius: Maui.Style.radiusV
+
+        Behavior on opacity
+        {
+            NumberAnimation
+            {
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
     }
 
-    Maui.Style.styleType: focusView ? Maui.Style.Adaptive : undefined
+    readonly property color focusAccentColor: Vvave.artworkAccent(
+                                                  currentTrack && currentTrack.artist ? currentTrack.artist : "",
+                                                  currentTrack && currentTrack.album ? currentTrack.album : "")
+
+    Maui.Style.styleType: focusView ? Maui.Style.Dark : undefined
+    Maui.Style.accentColor: focusView ? focusAccentColor : root.vvaveColor
 
     property QtObject tagsDialog : null
 
@@ -72,11 +86,9 @@ Maui.ApplicationWindow
 
     property string syncPlaylist: ""
     property bool sync: false
-    property string lastUsedPlaylist
+    property string lastUsedTag
 
     readonly property bool focusView : _stackView.currentItem.objectName === "FocusView"
-    readonly property bool miniMode : _miniModeComponent.visible
-
     property bool selectionMode : false
     property bool _forceClose: false
     property bool _outputSelectionReady: false
@@ -126,7 +138,7 @@ Maui.ApplicationWindow
         case viewsIndex.artists:
             return _artistsView
         case viewsIndex.playlists:
-            return _playlistsView
+            return _tagsView
         default:
             return null
         }
@@ -208,7 +220,12 @@ Maui.ApplicationWindow
             readonly property string dialogCategory: "Playback"
             sequence: "Left"
             enabled: !(activeFocusItem instanceof Maui.GridBrowser || activeFocusItem instanceof GridView)
-            onActivated: player.pos -= 10000
+            onActivated:
+            {
+                const durationMs = Math.max(1, player.duration || 1)
+                const step = 10000 / durationMs
+                player.position = Math.max(0, (player.position || 0) - step)
+            }
         },
 
         Shortcut
@@ -217,7 +234,12 @@ Maui.ApplicationWindow
             readonly property string dialogCategory: "Playback"
             sequence: "Right"
             enabled: !(activeFocusItem instanceof Maui.GridBrowser || activeFocusItem instanceof GridView)
-            onActivated: player.pos += 10000
+            onActivated:
+            {
+                const durationMs = Math.max(1, player.duration || 1)
+                const step = 10000 / durationMs
+                player.position = Math.min(1, (player.position || 0) + step)
+            }
         },
 
         Shortcut
@@ -439,18 +461,18 @@ Maui.ApplicationWindow
 
     Component
     {
-        id: _playlistDialogComponent
+        id: _tagsDialogComponent
 
         FB.TagsDialog
         {
             Action
             {
                 property string tag
-                id: _openPlaylistAction
+                id: _openTagAction
                 text: tag
                 onTriggered:
                 {
-                    goToPlaylist(tag)
+                    goToTag(tag)
                 }
             }
 
@@ -459,12 +481,12 @@ Maui.ApplicationWindow
                              var actions = []
                              if(tags.length === 1)
                              {
-                                 _openPlaylistAction.tag = tags[0]
-                                 actions = [_openPlaylistAction]
-                                 root.lastUsedPlaylist = tags[0]
+                                 _openTagAction.tag = tags[0]
+                                 actions = [_openTagAction]
+                                 root.lastUsedTag = tags[0]
                              }
 
-                             Maui.App.rootComponent.notify("dialog-info", i18n("Saved"), i18n("Track added to playlist"), actions)
+                             Maui.App.rootComponent.notify("dialog-info", i18n("Saved"), i18n("Track added to tag"), actions)
                              composerList.updateToUrls(tags)
                          }
 
@@ -994,9 +1016,9 @@ Maui.ApplicationWindow
                     list.query : Albums.ARTISTS
                 }
 
-                PlaylistsView
+                TagsView
                 {
-                    id: _playlistsView
+                    id: _tagsView
                 }
 
                 data: Loader
@@ -1029,21 +1051,6 @@ Maui.ApplicationWindow
             }
         }
     }
-    }
-
-    Loader
-    {
-        id: _miniModeComponent
-        visible: active
-        active: false
-        sourceComponent: MiniMode
-        {
-            onClosing: (close) =>
-                       {
-                           toggleMiniMode()
-                           close.accepted = true
-                       }
-        }
     }
 
     Component.onCompleted:
@@ -1171,23 +1178,6 @@ Maui.ApplicationWindow
             _stackView.currentItem.forceActiveFocus()
     }
 
-    function toggleMiniMode()
-    {
-        if(Maui.Handy.isMobile)
-        {
-            return
-        }
-
-        if(miniMode)
-        {
-            _miniModeComponent.item.close()
-            _miniModeComponent.active = false
-        }else
-        {
-            _miniModeComponent.active = true
-        }
-    }
-
     function toggleSidebar()
     {
         _sideBarView.sideBar.toggle()
@@ -1250,7 +1240,7 @@ Maui.ApplicationWindow
         _artistsView.populateTable(undefined, artist)
     }
 
-    function goToPlaylist(tag)
+    function goToTag(tag)
     {
         if(root.focusView)
         {
@@ -1258,7 +1248,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = viewsIndex.playlists
-        _playlistsView.populate(tag)
+        _tagsView.populate(tag)
     }
 
     function tagUrls(urls)
@@ -1268,7 +1258,7 @@ Maui.ApplicationWindow
             root.tagsDialog.composerList.urls = urls
         }else
         {
-            root.tagsDialog =  _playlistDialogComponent.createObject(root, ({'composerList.urls' : urls}))
+            root.tagsDialog =  _tagsDialogComponent.createObject(root, ({'composerList.urls' : urls}))
         }
 
         root.tagsDialog.open()

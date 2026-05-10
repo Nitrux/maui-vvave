@@ -36,17 +36,21 @@ StackView
         onAlbumCoverClicked:(album, artist) => control.populateTable(album, artist)
         onPlayAll: (album, artist) =>
         {
-            var query
-            if(album && artist)
+            const albumName = String(album || "").trim()
+            const artistName = String(artist || "").trim()
+            var query = ""
+
+            if (albumName.length > 0 && artistName.length > 0)
             {
-            query = Q.GET.albumTracks_.arg(encodeURIComponent(album))
-            query = query.arg(encodeURIComponent(artist))
-            }else if(artist && !album)
+                query = Q.GET.albumTracks_.arg(encodeURIComponent(albumName))
+                query = query.arg(encodeURIComponent(artistName))
+            } else if (artistName.length > 0 && albumName.length === 0)
             {
-              query = Q.GET.artistTracks_.arg(encodeURIComponent(artist))
+                query = Q.GET.artistTracks_.arg(encodeURIComponent(artistName))
             }
 
-            Player.playQuery(query)
+            if (query.length > 0)
+                Player.playQuery(query)
         }
     }
 

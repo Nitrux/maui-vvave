@@ -16,20 +16,20 @@ StackView
     id: control
     background: null
 
-    property string playlistQuery
+    property string tagQuery
 
     readonly property Flickable flickable : currentItem.flickable
-    readonly property alias playlistList : _playlistPage.list
+    readonly property alias tagList : _tagsPage.list
 
     Component
     {
-        id: newPlaylistDialogComponent
+        id: newTagDialogComponent
         FB.NewTagDialog {onClosed: destroy()}
     }
 
-    initialItem: PlaylistsViewModel
+    initialItem: TagsViewModel
     {
-        id: _playlistPage
+        id: _tagsPage
     }
 
     Component
@@ -40,21 +40,21 @@ StackView
         {
             id: filterList
 
-            property string currentPlaylist //id
+            property string currentTag //id
 
             property bool isPublic: true
 
-            signal removeFromPlaylist(string url)
+            signal removeFromTag(string url)
 
             coverArtVisible: settings.fetchArtwork
 
-            list.query: control.playlistQuery
+            list.query: control.tagQuery
             showTitle: false
-            title: currentPlaylist
+            title: currentTag
 
-            holder.emoji: "folder-music"
+            holder.emoji: "tag"
             holder.title : title
-            holder.body: i18n("Your playlist is empty. Start adding new music to it")
+            holder.body: i18n("No tracks found for this tag")
 
             headBar.visible: true
             headBar.farLeftContent: ToolButton
@@ -65,10 +65,10 @@ StackView
 
             contextMenuItems: MenuItem
             {
-                text: i18n("Remove from playlist")
+                text: i18n("Remove from tag")
                 onTriggered:
                 {
-                    control.playlistList.removeTrack(currentPlaylist, listModel.get(filterList.currentIndex).url)
+                    control.tagList.removeTrack(currentTag, listModel.get(filterList.currentIndex).url)
                     listModel.list.remove(filterList.currentIndex)
                 }
             }
@@ -85,7 +85,7 @@ StackView
                 if(filterList.isPublic)
                 {
                     root.sync = true
-                    root.syncPlaylist = currentPlaylist
+                    root.syncPlaylist = currentTag
                 }
             }
 
@@ -95,15 +95,15 @@ StackView
             Component.onCompleted:
             {
                 filterList.isPublic = true
-                playlistQuery = Q.GET.playlistTracks_.arg(currentPlaylist)
+                tagQuery = Q.GET.playlistTracks_.arg(currentTag)
                 filterList.listModel.clearFilters()
             }
         }
     }
 
-    function populate(playlist, isPublic)
+    function populate(tag, isPublic)
     {
-        control.push(_filterListComponent, {'currentPlaylist': playlist, 'isPublic': isPublic})
+        control.push(_filterListComponent, {'currentTag': tag, 'isPublic': isPublic})
     }
 
     function getGoBackFunc()

@@ -10,18 +10,19 @@ Maui.AltBrowser
     id: control
     background: null
 
-    readonly property alias list: _playlistsList
+    property string currentTag: ""
+    readonly property alias list: _tagsList
 
     function applyPrimarySort(index)
     {
-        _playlistsModel.sort = "playlist"
-        _playlistsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+        _tagsModel.sort = "playlist"
+        _tagsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
     }
 
     function applySecondarySort(index)
     {
-        _playlistsModel.sort = "key"
-        _playlistsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+        _tagsModel.sort = "key"
+        _tagsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
     }
 
     function focusSearch()
@@ -40,10 +41,10 @@ Maui.AltBrowser
     gridView.itemHeight: 180
 
     holder.emoji: "folder-music"
-    holder.title : i18n("No Playlists!")
-    holder.body: i18n("Start creating new custom playlists")
+    holder.title : i18n("No Tags!")
+    holder.body: i18n("Start creating new tags")
 
-    holder.visible: _playlistsModel.count === 0
+    holder.visible: _tagsModel.count === 0
 
     Component
     {
@@ -51,11 +52,11 @@ Maui.AltBrowser
         Maui.InfoDialog
         {
             onClosed: destroy()
-            title: i18n("Remove '%1'?", currentPlaylist)
+            title: i18n("Remove '%1'?", currentTag)
             message: i18n("Are you sure you want to remove this tag? This operation can not be undone.")
             onAccepted:
             {
-                _playlistsList.removePlaylist(control.model.mappedToSource(control.currentIndex))
+                _tagsList.removePlaylist(control.model.mappedToSource(control.currentIndex))
                 close()
             }
 
@@ -89,10 +90,10 @@ Maui.AltBrowser
 
     model: Maui.BaseModel
     {
-        id: _playlistsModel
+        id: _tagsModel
         list: Vvave.Playlists
         {
-            id: _playlistsList
+            id: _tagsList
         }
 
         filterRole: "playlist"
@@ -104,7 +105,7 @@ Maui.AltBrowser
     footBar.visible: false
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
-    headBar.visible: _playlistsModel.count > 0
+    headBar.visible: _tagsModel.count > 0
 
     headBar.leftContent: RowLayout
     {
@@ -122,7 +123,7 @@ Maui.AltBrowser
         {
             id: _primarySortCombo
             implicitWidth: 170
-            model: [i18n("Playlist Ascending"), i18n("Playlist Descending")]
+            model: [i18n("Tag Ascending"), i18n("Tag Descending")]
             currentIndex: 0
             onActivated: applyPrimarySort(currentIndex)
         }
@@ -145,7 +146,7 @@ Maui.AltBrowser
         Layout.preferredWidth: 320
         Layout.maximumWidth: 360
         Layout.alignment: Qt.AlignRight
-        placeholderText: i18n("Search playlists")
+        placeholderText: i18n("Search tags")
         inputMethodHints: Qt.ImhNoAutoUppercase
         enabled: headBar.visible
 
@@ -153,12 +154,12 @@ Maui.AltBrowser
         {
             const query = text.trim()
             if (query.length === 0)
-                _playlistsModel.clearFilters()
+                _tagsModel.clearFilters()
             else
-                _playlistsModel.filters = [query]
+                _tagsModel.filters = [query]
         }
 
-        onCleared: _playlistsModel.clearFilters()
+        onCleared: _tagsModel.clearFilters()
 
         Keys.onPressed: (event) =>
         {
@@ -175,7 +176,7 @@ Maui.AltBrowser
         icon.name: "list-add"
         onClicked:
         {
-           var dialog = newPlaylistDialogComponent.createObject(control)
+           var dialog = newTagDialogComponent.createObject(control)
             dialog.open()
         }
     }
@@ -225,7 +226,7 @@ Maui.AltBrowser
         function tryOpenContextMenu()
         {
             control.currentIndex = index
-            currentPlaylist = model.key
+            currentTag = model.key
             _tagMenu.show()
         }
     }
@@ -278,7 +279,7 @@ Maui.AltBrowser
         function tryOpenContextMenu()
         {
             control.currentIndex = index
-            currentPlaylist = model.key
+            currentTag = model.key
             _tagMenu.show()
         }
     }

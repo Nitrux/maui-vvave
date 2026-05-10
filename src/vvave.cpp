@@ -7,10 +7,13 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QColor>
 #include <QFileInfo>
+#include <QImage>
 #include <QSet>
 #include <QSettings>
 #include <QTimer>
+#include <array>
 #include <algorithm>
 #include <limits>
 
@@ -45,6 +48,134 @@ int trackNumberForSort(const FMH::MODEL &track)
     bool ok = false;
     const int value = track.value(FMH::MODEL_KEY::TRACK).toInt(&ok);
     return (ok && value > 0) ? value : std::numeric_limits<int>::max();
+}
+
+QColor clampAccentColor(const QColor &color)
+{
+    QColor hslColor = color.toHsl();
+
+    qreal hue = hslColor.hslHueF();
+    if (hue < 0.0) {
+        hue = 0.55;
+    }
+
+    const qreal saturation = std::clamp<qreal>(qreal(hslColor.hslSaturationF()), qreal(0.35), qreal(0.95));
+    const qreal lightness = std::clamp<qreal>(qreal(hslColor.lightnessF()), qreal(0.35), qreal(0.62));
+
+    QColor result;
+    result.setHslF(hue, saturation, lightness, 1.0);
+    return result;
+}
+
+QColor fallbackAccentColor()
+{
+    return QColor(QStringLiteral("#f84172"));
+}
+
+QColor accentFromArtwork(const QImage &sourceImage)
+{
+    if (sourceImage.isNull()) {
+        return fallbackAccentColor();
+    }
+
+    const QImage image = sourceImage.convertToFormat(QImage::Format_ARGB32)
+                             .scaled(96, 96, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    if (image.isNull()) {
+        return fallbackAccentColor();
+    }
+
+    struct Bucket
+    {
+        double weight = 0.0;
+        double red = 0.0;
+        double green = 0.0;
+        double blue = 0.0;
+        double saturation = 0.0;
+        double lightness = 0.0;
+    };
+
+    constexpr int hueBuckets = 24;
+    constexpr int saturationBuckets = 6;
+    constexpr int lightnessBuckets = 6;
+    constexpr int bucketCount = hueBuckets * saturationBuckets * lightnessBuckets;
+
+    std::array<Bucket, bucketCount> buckets;
+
+    auto bucketIndexFor = [=](const QColor &color) {
+        int hue = color.hslHue();
+        if (hue < 0) {
+            hue = 0;
+        }
+
+        const int hueIndex = std::clamp(hue / 15, 0, hueBuckets - 1);
+        const int saturationIndex = std::clamp(int(color.hslSaturationF() * saturationBuckets), 0, saturationBuckets - 1);
+        const int lightnessIndex = std::clamp(int(color.lightnessF() * lightnessBuckets), 0, lightnessBuckets - 1);
+
+        return hueIndex + (saturationIndex * hueBuckets) + (lightnessIndex * hueBuckets * saturationBuckets);
+    };
+
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor color = image.pixelColor(x, y).toHsl();
+            if (color.alpha() < 24) {
+                continue;
+            }
+
+            const double saturation = color.hslSaturationF();
+            const double lightness = color.lightnessF();
+
+            if (lightness <= 0.02 || lightness >= 0.98) {
+                continue;
+            }
+
+            if (saturation < 0.06 && (lightness <= 0.18 || lightness >= 0.82)) {
+                continue;
+            }
+
+            const double vividness = std::clamp((saturation - 0.08) / 0.92, 0.0, 1.0);
+            const double midtoneBalance = 1.0 - std::min(1.0, std::abs(lightness - 0.52) / 0.52);
+            const double weight = 0.12 + (vividness * vividness * 0.7) + (midtoneBalance * 0.18);
+
+            auto &bucket = buckets[bucketIndexFor(color)];
+            bucket.weight += weight;
+            bucket.red += color.redF() * weight;
+            bucket.green += color.greenF() * weight;
+            bucket.blue += color.blueF() * weight;
+            bucket.saturation += saturation * weight;
+            bucket.lightness += lightness * weight;
+        }
+    }
+
+    double bestScore = 0.0;
+    QColor bestColor;
+
+    for (const auto &bucket : buckets) {
+        if (bucket.weight <= 0.0) {
+            continue;
+        }
+
+        const double avgSaturation = bucket.saturation / bucket.weight;
+        const double avgLightness = bucket.lightness / bucket.weight;
+
+        if (avgSaturation < 0.12) {
+            continue;
+        }
+
+        const double score = bucket.weight * (0.4 + (avgSaturation * 0.9)) * (1.0 - std::min(0.85, std::abs(avgLightness - 0.5)));
+        if (score <= bestScore) {
+            continue;
+        }
+
+        bestScore = score;
+        bestColor.setRgbF(bucket.red / bucket.weight, bucket.green / bucket.weight, bucket.blue / bucket.weight, 1.0);
+    }
+
+    if (!bestColor.isValid()) {
+        return fallbackAccentColor();
+    }
+
+    return clampAccentColor(bestColor);
 }
 }
 
@@ -251,6 +382,25 @@ QString vvave::artworkUrl(const QString &artist, const QString &album)
     }
 
     return QString();
+}
+
+QColor vvave::artworkAccent(const QString &artist, const QString &album)
+{
+    QString localPath = artworkUrl(artist, album);
+
+    if (localPath.isEmpty() && !artist.isEmpty()) {
+        FMH::MODEL data = {{FMH::MODEL_KEY::ARTIST, artist}, {FMH::MODEL_KEY::ALBUM, album}};
+        if (BAE::artworkCache(data, FMH::MODEL_KEY::ARTIST)) {
+            localPath = QUrl(data[FMH::MODEL_KEY::ARTWORK]).toLocalFile();
+        }
+    }
+
+    if (localPath.isEmpty()) {
+        return fallbackAccentColor();
+    }
+
+    const QImage image(localPath);
+    return accentFromArtwork(image);
 }
 
 QVariantList vvave::getTracks(const QString &query)
