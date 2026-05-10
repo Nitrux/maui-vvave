@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import org.mauikit.controls as Maui
+import org.maui.vvave
 
 import "VVaveGrid"
 import "VVaveTable"
@@ -33,7 +34,7 @@ StackView
         holder.emoji: "folder-music"
         holder.actions: []
 
-        onAlbumCoverClicked:(album, artist) => control.populateTable(album, artist)
+        onAlbumCoverClicked:(album, artist) => control.openSelection(album, artist)
         onPlayAll: (album, artist) =>
         {
             const albumName = String(album || "").trim()
@@ -63,7 +64,7 @@ StackView
             list.query: control.currentQuery
             trackNumberVisible: true
             coverArtVisible: settings.fetchArtwork
-            collapseRepeatedAlbumArt: control.currentAlbum.length === 0
+            collapseRepeatedAlbumArt: false
             focus: true
 
             holder.emoji: "qrc:/assets/media-album-track.svg"
@@ -80,7 +81,7 @@ StackView
                     icon.name: "go-previous"
                     display: AbstractButton.IconOnly
                     ToolTip.visible: hovered
-                    ToolTip.text: control.prefix === "album" ? i18n("Back to albums") : i18n("Back to artists")
+                    ToolTip.text: control.depth > 2 ? i18n("Back to artist") : (control.prefix === "album" ? i18n("Back to albums") : i18n("Back to artists"))
                     onClicked: control.pop()
                 }
 
@@ -115,25 +116,131 @@ StackView
         }
     }
 
+    Component
+    {
+        id: _artistDetailsComponent
+
+        VVaveGrid
+        {
+            id: artistDetailsGrid
+            background: null
+            list.query: Albums.ALBUMS
+            holder.emoji: "folder-music"
+            holder.actions: []
+
+            function applyArtistFilter()
+            {
+                const artistName = String(control.currentArtist || "").trim()
+                if (artistName.length === 0)
+                    return
+
+                listModel.filterRole = "artist"
+                listModel.filters = [artistName]
+            }
+
+            headBar.visible: true
+            headBar.farLeftContent: RowLayout
+            {
+                spacing: Maui.Style.space.small
+
+                ToolButton
+                {
+                    icon.name: "go-previous"
+                    display: AbstractButton.IconOnly
+                    ToolTip.visible: hovered
+                    ToolTip.text: i18n("Back to artists")
+                    onClicked: control.pop()
+                }
+
+                ToolSeparator
+                {
+                    topPadding: 10
+                    bottomPadding: 10
+                }
+
+                Label
+                {
+                    text: String(control.currentArtist || "")
+                    font.bold: true
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: Maui.Style.units.gridUnit * 12
+                }
+            }
+
+            Connections
+            {
+                target: control
+                function onCurrentArtistChanged()
+                {
+                    artistDetailsGrid.applyArtistFilter()
+                }
+            }
+
+            onAlbumCoverClicked: (album, artist) => control.populateTable(album, artist)
+            onPlayAll: (album, artist) =>
+            {
+                const albumName = String(album || "").trim()
+                const artistName = String(artist || "").trim()
+                var query = ""
+
+                if (albumName.length > 0 && artistName.length > 0) {
+                    query = Q.GET.albumTracks_.arg(encodeURIComponent(albumName))
+                    query = query.arg(encodeURIComponent(artistName))
+                } else if (artistName.length > 0) {
+                    query = Q.GET.artistTracks_.arg(encodeURIComponent(artistName))
+                }
+
+                if (query.length > 0)
+                    Player.playQuery(query)
+            }
+
+            Component.onCompleted: applyArtistFilter()
+        }
+    }
+
+    function openSelection(album, artist)
+    {
+        const albumName = String(album || "").trim()
+        const artistName = String(artist || "").trim()
+
+        if (artistName.length === 0)
+            return
+
+        if (control.prefix === "artist" || albumName.length === 0)
+        {
+            populateArtist(artistName)
+            return
+        }
+
+        populateTable(albumName, artistName)
+    }
+
+    function populateArtist(artist)
+    {
+        currentAlbum = ""
+        currentArtist = String(artist || "").trim()
+        currentQuery = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
+        control.push(_artistDetailsComponent)
+    }
+
     function populateTable(album, artist)
     {
-        control.push(_tracksTableComponent)
-
-        currentAlbum = album === undefined ? "" : album
-        currentArtist = artist
+        currentAlbum = String(album || "").trim()
+        currentArtist = String(artist || "").trim()
 
         var query
-        if(currentAlbum && currentArtist)
+        if (currentAlbum.length > 0 && currentArtist.length > 0)
         {
             query = Q.GET.albumTracks_.arg(encodeURIComponent(currentAlbum))
             query = query.arg(encodeURIComponent(currentArtist))
-
-        }else if(currentArtist && !currentAlbum.length)
+        }
+        else if (currentArtist.length > 0 && currentAlbum.length === 0)
         {
             query = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
         }
 
         control.currentQuery = query
+        control.push(_tracksTableComponent)
     }
 
     function getGoBackFunc()
