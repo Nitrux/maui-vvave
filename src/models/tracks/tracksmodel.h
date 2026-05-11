@@ -30,8 +30,10 @@ private:
     QString query;
     int m_limit = 99999;
     bool m_autoPopulate = true;
+    bool m_componentCompleted = false;
 
     void setList();
+    void reload(bool force = false);
 
 Q_SIGNALS:
     void queryChanged();

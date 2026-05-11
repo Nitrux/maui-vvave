@@ -9,6 +9,7 @@
 #include <QDirIterator>
 #include <QColor>
 #include <QFileInfo>
+#include <QHash>
 #include <QImage>
 #include <QSet>
 #include <QSettings>
@@ -24,23 +25,60 @@ Q_GLOBAL_STATIC(vvave, vvaveInstance)
 namespace
 {
 FMH::MODEL_LIST s_cachedTracks;
+FMH::MODEL_LIST s_cachedAlbums;
+FMH::MODEL_LIST s_cachedArtists;
+QHash<QString, QList<int>> s_artistTrackRows;
+QHash<QString, QList<int>> s_albumTrackRows;
+QHash<QString, int> s_trackRowByUrl;
 bool s_trackCacheValid = false;
+bool s_collectionIndexesValid = false;
 
-void invalidateTrackCache()
-{
-    s_trackCacheValid = false;
-    s_cachedTracks.clear();
-}
-
-bool isAudioFile(const QString &path)
+const QSet<QString> &audioSuffixes()
 {
     static const QSet<QString> kAudioSuffixes = {
         QStringLiteral("mp3"), QStringLiteral("flac"), QStringLiteral("ogg"), QStringLiteral("oga"), QStringLiteral("opus"),
         QStringLiteral("wav"), QStringLiteral("m4a"), QStringLiteral("aac"), QStringLiteral("wma"), QStringLiteral("aiff"),
         QStringLiteral("ape"), QStringLiteral("alac"), QStringLiteral("mp2"), QStringLiteral("mp1")};
 
+    return kAudioSuffixes;
+}
+
+QString normalizeLookupValue(const QString &value)
+{
+    return value.trimmed().toCaseFolded();
+}
+
+QString artistLookupKey(const QString &artist)
+{
+    return normalizeLookupValue(artist);
+}
+
+QString albumLookupKey(const QString &album, const QString &artist)
+{
+    return normalizeLookupValue(album) + QStringLiteral("\x1f") + normalizeLookupValue(artist);
+}
+
+void invalidateTrackCache()
+{
+    s_trackCacheValid = false;
+    s_collectionIndexesValid = false;
+    s_cachedTracks.clear();
+    s_cachedAlbums.clear();
+    s_cachedArtists.clear();
+    s_artistTrackRows.clear();
+    s_albumTrackRows.clear();
+    s_trackRowByUrl.clear();
+}
+
+bool hasAudioSuffix(const QString &suffix)
+{
+    return audioSuffixes().contains(suffix.toLower());
+}
+
+bool isAudioFile(const QString &path)
+{
     const QFileInfo info(path);
-    return info.exists() && info.isFile() && kAudioSuffixes.contains(info.suffix().toLower());
+    return info.exists() && info.isFile() && hasAudioSuffix(info.suffix());
 }
 
 int trackNumberForSort(const FMH::MODEL &track)
@@ -48,6 +86,106 @@ int trackNumberForSort(const FMH::MODEL &track)
     bool ok = false;
     const int value = track.value(FMH::MODEL_KEY::TRACK).toInt(&ok);
     return (ok && value > 0) ? value : std::numeric_limits<int>::max();
+}
+
+bool trackListSortLess(const FMH::MODEL &a, const FMH::MODEL &b)
+{
+    const int trackA = trackNumberForSort(a);
+    const int trackB = trackNumberForSort(b);
+
+    if (trackA != trackB) {
+        return trackA < trackB;
+    }
+
+    const QString titleA = a.value(FMH::MODEL_KEY::TITLE);
+    const QString titleB = b.value(FMH::MODEL_KEY::TITLE);
+    const int titleCompare = QString::localeAwareCompare(titleA, titleB);
+    if (titleCompare != 0) {
+        return titleCompare < 0;
+    }
+
+    return QString::localeAwareCompare(a.value(FMH::MODEL_KEY::URL), b.value(FMH::MODEL_KEY::URL)) < 0;
+}
+
+FMH::MODEL_LIST tracksForRows(const QList<int> &rows)
+{
+    FMH::MODEL_LIST tracks;
+    tracks.reserve(rows.size());
+
+    for (const auto row : rows) {
+        if (row >= 0 && row < s_cachedTracks.size()) {
+            tracks << s_cachedTracks.at(row);
+        }
+    }
+
+    return tracks;
+}
+
+void ensureCollectionIndexes()
+{
+    if (s_collectionIndexesValid) {
+        return;
+    }
+
+    if (!s_trackCacheValid) {
+        return;
+    }
+
+    QSet<QString> seenArtists;
+    QSet<QString> seenAlbums;
+
+    for (int i = 0; i < s_cachedTracks.size(); ++i) {
+        const auto &track = s_cachedTracks.at(i);
+        const auto artist = track[FMH::MODEL_KEY::ARTIST];
+        const auto album = track[FMH::MODEL_KEY::ALBUM];
+        const auto url = track[FMH::MODEL_KEY::URL];
+
+        if (!url.isEmpty()) {
+            s_trackRowByUrl.insert(url, i);
+        }
+
+        const auto normalizedArtist = artistLookupKey(artist);
+        if (!normalizedArtist.isEmpty()) {
+            s_artistTrackRows[normalizedArtist] << i;
+
+            if (!seenArtists.contains(normalizedArtist)) {
+                seenArtists.insert(normalizedArtist);
+                s_cachedArtists << FMH::MODEL{{FMH::MODEL_KEY::ARTIST, artist}};
+            }
+        }
+
+        const auto normalizedAlbum = albumLookupKey(album, artist);
+        if (!album.isEmpty() && !normalizedArtist.isEmpty()) {
+            s_albumTrackRows[normalizedAlbum] << i;
+
+            if (!seenAlbums.contains(normalizedAlbum)) {
+                seenAlbums.insert(normalizedAlbum);
+                s_cachedAlbums << FMH::MODEL{{FMH::MODEL_KEY::ALBUM, album}, {FMH::MODEL_KEY::ARTIST, artist}};
+            }
+        }
+    }
+
+    for (auto it = s_albumTrackRows.begin(); it != s_albumTrackRows.end(); ++it) {
+        auto &rows = it.value();
+        std::stable_sort(rows.begin(), rows.end(), [](int left, int right) {
+            return trackListSortLess(s_cachedTracks.at(left), s_cachedTracks.at(right));
+        });
+    }
+
+    std::sort(s_cachedAlbums.begin(), s_cachedAlbums.end(), [](const FMH::MODEL &a, const FMH::MODEL &b) {
+        const int albumCompare = a[FMH::MODEL_KEY::ALBUM].compare(b[FMH::MODEL_KEY::ALBUM], Qt::CaseInsensitive);
+        if (albumCompare != 0) {
+            return albumCompare < 0;
+        }
+
+        return a[FMH::MODEL_KEY::ARTIST].compare(b[FMH::MODEL_KEY::ARTIST], Qt::CaseInsensitive) < 0;
+    });
+
+    std::sort(s_cachedArtists.begin(), s_cachedArtists.end(), [](const FMH::MODEL &a, const FMH::MODEL &b) {
+        return a[FMH::MODEL_KEY::ARTIST].compare(b[FMH::MODEL_KEY::ARTIST], Qt::CaseInsensitive) < 0;
+    });
+
+    s_collectionIndexesValid = true;
 }
 
 QColor clampAccentColor(const QColor &color)
@@ -261,18 +399,20 @@ FMH::MODEL_LIST vvave::localTracks()
 
         QDirIterator it(sourcePath, QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
-            const auto filePath = it.next();
-            if (!isAudioFile(filePath)) {
+            it.next();
+            const auto fileInfo = it.fileInfo();
+            if (!fileInfo.isFile() || !hasAudioSuffix(fileInfo.suffix())) {
                 continue;
             }
 
-            const auto fileUrl = QUrl::fromLocalFile(filePath).toString();
+            const auto absoluteFilePath = fileInfo.absoluteFilePath();
+            const auto fileUrl = QUrl::fromLocalFile(absoluteFilePath).toString();
             if (seenUrls.contains(fileUrl)) {
                 continue;
             }
 
             seenUrls.insert(fileUrl);
-            auto model = vvave::trackInfo(QUrl::fromLocalFile(filePath));
+            auto model = vvave::trackInfo(QUrl::fromLocalFile(absoluteFilePath));
             if (!model.isEmpty()) {
                 tracks << model;
             }
@@ -281,7 +421,22 @@ FMH::MODEL_LIST vvave::localTracks()
 
     s_cachedTracks = tracks;
     s_trackCacheValid = true;
+    ensureCollectionIndexes();
     return s_cachedTracks;
+}
+
+FMH::MODEL_LIST vvave::albums()
+{
+    localTracks();
+    ensureCollectionIndexes();
+    return s_cachedAlbums;
+}
+
+FMH::MODEL_LIST vvave::artists()
+{
+    localTracks();
+    ensureCollectionIndexes();
+    return s_cachedArtists;
 }
 
 FMH::MODEL_LIST vvave::tracksForTag(const QString &tag)
@@ -291,13 +446,25 @@ FMH::MODEL_LIST vvave::tracksForTag(const QString &tag)
         return tracks;
     }
 
+    localTracks();
+    ensureCollectionIndexes();
+
     const auto urls = Tagging::getInstance()->getTagUrls(tag, {}, true, 99999, "audio");
     for (const auto &url : urls) {
         if (!url.isLocalFile() || !isAudioFile(url.toLocalFile())) {
             continue;
         }
 
-        auto model = vvave::trackInfo(url);
+        const auto normalizedUrl = QUrl::fromLocalFile(QFileInfo(url.toLocalFile()).absoluteFilePath()).toString();
+        const auto rowIt = s_trackRowByUrl.constFind(normalizedUrl);
+
+        FMH::MODEL model;
+        if (rowIt != s_trackRowByUrl.constEnd() && rowIt.value() >= 0 && rowIt.value() < s_cachedTracks.size()) {
+            model = s_cachedTracks.at(rowIt.value());
+        } else {
+            model = vvave::trackInfo(url);
+        }
+
         if (!model.isEmpty()) {
             tracks << model;
         }
@@ -308,10 +475,6 @@ FMH::MODEL_LIST vvave::tracksForTag(const QString &tag)
 
 FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
 {
-    const auto normalizedEquals = [](const QString &left, const QString &right) {
-        return left.trimmed().compare(right.trimmed(), Qt::CaseInsensitive) == 0;
-    };
-
     if (query.startsWith(QLatin1Char('#'))) {
         auto tag = query;
         tag.remove(0, 1);
@@ -325,15 +488,9 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
     if (query.startsWith(QStringLiteral("vvave://artist/"))) {
         const auto encodedArtist = query.mid(QStringLiteral("vvave://artist/").size());
         const auto artist = QUrl::fromPercentEncoding(encodedArtist.toUtf8());
-
-        FMH::MODEL_LIST filtered;
-        for (const auto &track : localTracks()) {
-            if (normalizedEquals(track[FMH::MODEL_KEY::ARTIST], artist)) {
-                filtered << track;
-            }
-        }
-
-        return filtered;
+        localTracks();
+        ensureCollectionIndexes();
+        return tracksForRows(s_artistTrackRows.value(artistLookupKey(artist)));
     }
 
     if (query.startsWith(QStringLiteral("vvave://album/"))) {
@@ -343,34 +500,9 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
         if (parts.size() >= 2) {
             const auto album = QUrl::fromPercentEncoding(parts.at(0).toUtf8());
             const auto artist = QUrl::fromPercentEncoding(parts.at(1).toUtf8());
-
-            FMH::MODEL_LIST filtered;
-            for (const auto &track : localTracks()) {
-                if (normalizedEquals(track[FMH::MODEL_KEY::ALBUM], album)
-                    && normalizedEquals(track[FMH::MODEL_KEY::ARTIST], artist)) {
-                    filtered << track;
-                }
-            }
-
-            std::stable_sort(filtered.begin(), filtered.end(), [](const FMH::MODEL &a, const FMH::MODEL &b) {
-                const int trackA = trackNumberForSort(a);
-                const int trackB = trackNumberForSort(b);
-
-                if (trackA != trackB) {
-                    return trackA < trackB;
-                }
-
-                const QString titleA = a.value(FMH::MODEL_KEY::TITLE);
-                const QString titleB = b.value(FMH::MODEL_KEY::TITLE);
-                const int titleCompare = QString::localeAwareCompare(titleA, titleB);
-                if (titleCompare != 0) {
-                    return titleCompare < 0;
-                }
-
-                return QString::localeAwareCompare(a.value(FMH::MODEL_KEY::URL), b.value(FMH::MODEL_KEY::URL)) < 0;
-            });
-
-            return filtered;
+            localTracks();
+            ensureCollectionIndexes();
+            return tracksForRows(s_albumTrackRows.value(albumLookupKey(album, artist)));
         }
     }
 
@@ -451,7 +583,6 @@ void vvave::addSources(const QList<QUrl> &paths)
     for (const auto &path : paths) {
         if (!urls.contains(path)) {
             newUrls << path;
-            Q_EMIT sourceAdded(path);
         }
     }
 
@@ -466,8 +597,12 @@ void vvave::addSources(const QList<QUrl> &paths)
     settings.setValue("SOURCES", QVariant::fromValue(QUrl::toStringList(urls)));
     settings.endGroup();
 
-    invalidateTrackCache();
     scanDir(urls);
+
+    for (const auto &path : newUrls) {
+        Q_EMIT sourceAdded(path);
+    }
+
     Q_EMIT sourcesChanged();
 }
 
@@ -488,6 +623,7 @@ bool vvave::removeSource(const QString &source)
     invalidateTrackCache();
     Q_EMIT this->sourceRemoved(QUrl(source));
     Q_EMIT sourcesChanged();
+    Q_EMIT collectionChanged();
     return true;
 }
 
@@ -495,6 +631,7 @@ void vvave::scanDir(const QList<QUrl> &paths)
 {
     Q_UNUSED(paths)
     invalidateTrackCache();
+    Q_EMIT collectionChanged();
 
     m_scanning = true;
     Q_EMIT scanningChanged(m_scanning);

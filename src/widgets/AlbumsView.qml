@@ -170,6 +170,12 @@ StackView
                     elide: Text.ElideRight
                     Layout.maximumWidth: Maui.Style.units.gridUnit * 12
                 }
+
+                ToolSeparator
+                {
+                    topPadding: 10
+                    bottomPadding: 10
+                }
             }
             headBar.leftContent: Item {}
             headBar.middleContent: Item {}

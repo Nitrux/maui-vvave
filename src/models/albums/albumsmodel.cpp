@@ -3,7 +3,6 @@
 #include "vvave.h"
 
 #include <algorithm>
-#include <QSet>
 
 AlbumsModel::AlbumsModel(QObject *parent)
     : MauiList(parent)
@@ -14,10 +13,12 @@ AlbumsModel::AlbumsModel(QObject *parent)
 
 void AlbumsModel::componentComplete()
 {
-    connect(vvave::instance(), &vvave::sourceRemoved, this, &AlbumsModel::setList);
-    connect(vvave::instance(), &vvave::sourceAdded, this, &AlbumsModel::setList);
+    m_componentCompleted = true;
+    connect(vvave::instance(), &vvave::collectionChanged, this, &AlbumsModel::setList);
     connect(this, &AlbumsModel::queryChanged, this, &AlbumsModel::setList);
-    setList();
+    if (m_autoPopulate) {
+        reload(true);
+    }
 }
 
 const FMH::MODEL_LIST &AlbumsModel::items() const
@@ -39,45 +40,44 @@ AlbumsModel::QUERY AlbumsModel::getQuery() const
     return this->query;
 }
 
+bool AlbumsModel::autoPopulate() const
+{
+    return m_autoPopulate;
+}
+
+void AlbumsModel::setAutoPopulate(bool autoPopulate)
+{
+    if (m_autoPopulate == autoPopulate) {
+        return;
+    }
+
+    m_autoPopulate = autoPopulate;
+    Q_EMIT autoPopulateChanged(m_autoPopulate);
+
+    if (m_componentCompleted && m_autoPopulate) {
+        reload(true);
+    }
+}
+
 void AlbumsModel::setList()
 {
+    reload(false);
+}
+
+void AlbumsModel::reload(bool force)
+{
+    if (!force && !m_autoPopulate) {
+        return;
+    }
+
     Q_EMIT this->preListChanged();
     this->list.clear();
 
-    const auto tracks = vvave::localTracks();
-
     if (this->query == AlbumsModel::QUERY::ALBUMS) {
-        QSet<QString> seen;
-        for (const auto &track : tracks) {
-            const auto album = track[FMH::MODEL_KEY::ALBUM];
-            const auto artist = track[FMH::MODEL_KEY::ARTIST];
-
-            const auto key = album + QStringLiteral("\x1f") + artist;
-            if (album.isEmpty() || artist.isEmpty() || seen.contains(key)) {
-                continue;
-            }
-
-            seen.insert(key);
-            this->list << FMH::MODEL{{FMH::MODEL_KEY::ALBUM, album}, {FMH::MODEL_KEY::ARTIST, artist}};
-        }
-
+        this->list = vvave::albums();
     } else if (this->query == AlbumsModel::QUERY::ARTISTS) {
-        QSet<QString> seen;
-        for (const auto &track : tracks) {
-            const auto artist = track[FMH::MODEL_KEY::ARTIST];
-            if (artist.isEmpty() || seen.contains(artist)) {
-                continue;
-            }
-
-            seen.insert(artist);
-            this->list << FMH::MODEL{{FMH::MODEL_KEY::ARTIST, artist}};
-        }
+        this->list = vvave::artists();
     }
-
-    std::sort(this->list.begin(), this->list.end(), [this](const FMH::MODEL &a, const FMH::MODEL &b) {
-        const auto key = this->query == AlbumsModel::QUERY::ALBUMS ? FMH::MODEL_KEY::ALBUM : FMH::MODEL_KEY::ARTIST;
-        return a[key].compare(b[key], Qt::CaseInsensitive) < 0;
-    });
 
     Q_EMIT this->postListChanged();
     Q_EMIT this->countChanged();
@@ -85,7 +85,7 @@ void AlbumsModel::setList()
 
 void AlbumsModel::refresh()
 {
-    this->setList();
+    this->reload(true);
 }
 
 int AlbumsModel::indexOfName(const QString &query)

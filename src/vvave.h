@@ -18,6 +18,8 @@ public:
     explicit vvave(QObject *parent = nullptr);
     static vvave *instance();
     static FMH::MODEL_LIST localTracks();
+    static FMH::MODEL_LIST albums();
+    static FMH::MODEL_LIST artists();
     static FMH::MODEL_LIST tracksForTag(const QString &tag);
     static FMH::MODEL_LIST tracksFromQuery(const QString &query);
 
@@ -61,6 +63,7 @@ Q_SIGNALS:
     void sourceAdded(QUrl source);
     void sourceRemoved(QUrl source);
 
+    void collectionChanged();
     void sourcesChanged();
     void fetchArtworkChanged(bool fetchArtwork);
     void scanningChanged(bool scanning);

@@ -96,14 +96,12 @@ Maui.Page
                 icon.name: switch(playlist.repeatMode)
                            {
                            case Vvave.Playlist.NoRepeat: return "media-repeat-none"
-                           case Vvave.Playlist.RepeatOnce: return "media-playlist-repeat-song"
                            case Vvave.Playlist.Repeat: return "media-playlist-repeat"
                            }
                 ToolTip.visible: hovered
                 ToolTip.text: switch(playlist.repeatMode)
                               {
                               case Vvave.Playlist.NoRepeat: return i18n("Repeat: Off")
-                              case Vvave.Playlist.RepeatOnce: return i18n("Repeat: One")
                               case Vvave.Playlist.Repeat: return i18n("Repeat: All")
                               }
                 onClicked:
@@ -115,10 +113,6 @@ Maui.Page
                         break
 
                     case Vvave.Playlist.Repeat:
-                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
-                        break
-
-                    case Vvave.Playlist.RepeatOnce:
                         playlist.repeatMode = Vvave.Playlist.NoRepeat
                         break
                     }
@@ -199,11 +193,11 @@ Maui.Page
 
                         images: [
                             "image://artwork/album:"
-                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
                             + ":"
-                            + (currentTrack && currentTrack.album ? currentTrack.album : ""),
+                            + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : ""),
                             "image://artwork/artist:"
-                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
                         ]
                     }
 

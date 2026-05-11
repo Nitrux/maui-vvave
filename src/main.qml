@@ -653,9 +653,9 @@ Maui.ApplicationWindow
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectCrop
                     source: "image://artwork/album:"
-                            + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
                             + ":"
-                            + (currentTrack && currentTrack.album ? currentTrack.album : "")
+                            + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : "")
                 }
             }
 
@@ -999,6 +999,7 @@ Maui.ApplicationWindow
                 TracksView
                 {
                     id: _tracksView
+                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.tracks
                 }
 
                 AlbumsView
@@ -1007,6 +1008,7 @@ Maui.ApplicationWindow
                     holder.title : i18n("No Albums!")
                     holder.body: i18n("Add new music sources")
                     list.query: Albums.ALBUMS
+                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.albums
                 }
 
                 AlbumsView
@@ -1015,6 +1017,7 @@ Maui.ApplicationWindow
                     holder.title : i18n("No Artists!")
                     holder.body: i18n("Add new music sources")
                     list.query : Albums.ARTISTS
+                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.artists
                 }
 
                 TagsView
@@ -1158,7 +1161,6 @@ Maui.ApplicationWindow
         root._outputSelectionReady = true
 
         Vvave.fetchArtwork = settings.fetchArtwork
-        Vvave.rescan()
     }
 
     function toggleFocusView()

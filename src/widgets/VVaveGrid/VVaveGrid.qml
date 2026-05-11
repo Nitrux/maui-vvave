@@ -15,6 +15,7 @@ Maui.AltBrowser
     readonly property string prefix : list.query === Albums.ALBUMS ? "album" : "artist"
     readonly property string primarySortRole: prefix === "album" ? "album" : "artist"
     readonly property string secondarySortRole: prefix === "album" ? "artist" : "album"
+    property string pendingSearchQuery: ""
 
 
     signal albumCoverClicked(string album, string artist)
@@ -40,6 +41,14 @@ Maui.AltBrowser
     {
         listModel.sort = secondarySortRole
         listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySearchFilter(query)
+    {
+        if (query.length === 0)
+            listModel.clearFilters()
+        else
+            listModel.filters = [query]
     }
 
     function focusSearch()
@@ -118,13 +127,25 @@ Maui.AltBrowser
         onTextChanged:
         {
             const query = text.trim()
+            pendingSearchQuery = query
+
             if (query.length === 0)
-                listModel.clearFilters()
+            {
+                _searchDebounceTimer.stop()
+                applySearchFilter("")
+            }
             else
-                listModel.filters = [query]
+            {
+                _searchDebounceTimer.restart()
+            }
         }
 
-        onCleared: listModel.clearFilters()
+        onCleared:
+        {
+            pendingSearchQuery = ""
+            _searchDebounceTimer.stop()
+            applySearchFilter("")
+        }
 
         Keys.onPressed: (event) =>
         {
@@ -134,6 +155,14 @@ Maui.AltBrowser
                 event.accepted = true
             }
         }
+    }
+
+    Timer
+    {
+        id: _searchDebounceTimer
+        interval: 180
+        repeat: false
+        onTriggered: applySearchFilter(pendingSearchQuery)
     }
 
     viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List

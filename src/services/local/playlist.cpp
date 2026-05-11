@@ -76,7 +76,16 @@ bool Playlist::canGoNext() const
         return false;
     }
 
-    return m_model->getCount() > 0;
+    const auto count = m_model->getCount();
+    if (count <= 0) {
+        return false;
+    }
+
+    if (m_repeatMode == RepeatMode::Repeat) {
+        return true;
+    }
+
+    return m_currentIndex >= 0 && m_currentIndex < (count - 1);
 }
 
 bool Playlist::canGoPrevious() const
@@ -85,7 +94,16 @@ bool Playlist::canGoPrevious() const
         return false;
     }
 
-    return m_model->getCount() > 0;
+    const auto count = m_model->getCount();
+    if (count <= 0) {
+        return false;
+    }
+
+    if (m_repeatMode == RepeatMode::Repeat) {
+        return true;
+    }
+
+    return m_currentIndex > 0 && m_currentIndex < count;
 }
 
 bool Playlist::canPlay() const
@@ -103,21 +121,15 @@ void Playlist::next()
         return;
     }
 
+    const auto count = m_model->getCount();
+    if (count <= 0 || m_currentIndex < 0) {
+        return;
+    }
+
     switch (m_repeatMode) {
     case RepeatMode::Repeat: {
         setCurrentIndex(m_currentIndex);
         return;
-    }
-
-    case RepeatMode::RepeatOnce: {
-        if (m_repeatFlag == 0) {
-            m_repeatFlag = 1;
-            setCurrentIndex(m_currentIndex);
-            return;
-        } else {
-            m_repeatFlag = 0;
-        }
-        break;
     }
     default:
     case RepeatMode::NoRepeat:
@@ -127,7 +139,12 @@ void Playlist::next()
     switch (m_playMode) {
     case PlayMode::Normal:
     case PlayMode::Shuffle: {
-        setCurrentIndex(m_currentIndex + 1 >= m_model->getCount() ? 0 : m_currentIndex + 1);
+        const int nextIndex = m_currentIndex + 1;
+        if (nextIndex >= count) {
+            return;
+        }
+
+        setCurrentIndex(nextIndex);
         break;
     }
     }
@@ -142,7 +159,14 @@ void Playlist::previous()
     if (!canGoPrevious())
         return;
 
-    int previous = m_currentIndex - 1 >= 0 ? m_currentIndex - 1 : m_model->getCount() - 1;
+    int previous = m_currentIndex - 1;
+    if (previous < 0) {
+        if (m_repeatMode == RepeatMode::Repeat) {
+            previous = m_model->getCount() - 1;
+        } else {
+            return;
+        }
+    }
 
     setCurrentIndex(previous);
 }

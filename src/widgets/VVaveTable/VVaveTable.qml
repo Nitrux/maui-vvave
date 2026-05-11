@@ -40,6 +40,7 @@ Maui.Page
     property bool enforceDefaultTitleSort: false
     property bool showGenreSort: true
     property bool _defaultSortApplied: false
+    property string _pendingFilterQuery: ""
 
     readonly property alias contextMenu : contextMenu
     property alias contextMenuItems : contextMenu.contentData
@@ -70,6 +71,14 @@ Maui.Page
     {
         listModel.sort = "genre"
         listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySearchFilter(query)
+    {
+        if (query.length === 0)
+            listModel.clearFilters()
+        else
+            listModel.filters = [query]
     }
 
     function applyDefaultSortIfNeeded()
@@ -148,13 +157,25 @@ Maui.Page
         onTextChanged:
         {
             const query = text.trim()
+            control._pendingFilterQuery = query
+
             if (query.length === 0)
-                listModel.clearFilters()
+            {
+                _filterTimer.stop()
+                control.applySearchFilter("")
+            }
             else
-                listModel.filters = [query]
+            {
+                _filterTimer.restart()
+            }
         }
 
-        onCleared: listModel.clearFilters()
+        onCleared:
+        {
+            control._pendingFilterQuery = ""
+            _filterTimer.stop()
+            control.applySearchFilter("")
+        }
 
         Keys.onPressed: (event) =>
         {
@@ -164,6 +185,14 @@ Maui.Page
                 event.accepted = true
             }
         }
+    }
+
+    Timer
+    {
+        id: _filterTimer
+        interval: 180
+        repeat: false
+        onTriggered: control.applySearchFilter(control._pendingFilterQuery)
     }
 
     Component

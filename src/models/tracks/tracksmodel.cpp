@@ -13,11 +13,11 @@ TracksModel::TracksModel(QObject *parent)
 
 void TracksModel::componentComplete()
 {
+    m_componentCompleted = true;
     connect(this, &TracksModel::queryChanged, this, &TracksModel::setList);
-    connect(vvave::instance(), &vvave::sourceRemoved, this, &TracksModel::setList);
-    connect(vvave::instance(), &vvave::sourceAdded, this, &TracksModel::setList);
+    connect(vvave::instance(), &vvave::collectionChanged, this, &TracksModel::setList);
     if (m_autoPopulate) {
-        setList();
+        reload(true);
     }
 }
 
@@ -28,6 +28,10 @@ const FMH::MODEL_LIST &TracksModel::items() const
 
 void TracksModel::setQuery(const QString &query)
 {
+    if (this->query == query) {
+        return;
+    }
+
     this->query = query;
     Q_EMIT this->queryChanged();
 }
@@ -44,7 +48,12 @@ int TracksModel::limit() const
 
 void TracksModel::setList()
 {
-    if (!m_autoPopulate && query.isEmpty()) {
+    reload(false);
+}
+
+void TracksModel::reload(bool force)
+{
+    if (!force && !m_autoPopulate) {
         return;
     }
 
@@ -214,7 +223,7 @@ bool TracksModel::removeMissing(const int &index)
 
 void TracksModel::refresh()
 {
-    this->setList();
+    this->reload(true);
 }
 
 bool TracksModel::update(const QVariantMap &data, const int &index)
@@ -278,6 +287,10 @@ void TracksModel::setLimit(int limit)
 
     m_limit = limit;
     Q_EMIT limitChanged(m_limit);
+
+    if (m_componentCompleted && m_autoPopulate) {
+        reload(true);
+    }
 }
 
 bool TracksModel::autoPopulate() const
@@ -293,4 +306,8 @@ void TracksModel::setAutoPopulate(bool autoPopulate)
 
     m_autoPopulate = autoPopulate;
     Q_EMIT autoPopulateChanged(m_autoPopulate);
+
+    if (m_componentCompleted && m_autoPopulate) {
+        reload(true);
+    }
 }

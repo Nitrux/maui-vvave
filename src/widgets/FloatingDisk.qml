@@ -161,9 +161,9 @@ Loader
                 id: _img
                 anchors.fill: parent
                 source: "image://artwork/album:"
-                        + (currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                        + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
                         + ":"
-                        + (currentTrack && currentTrack.album ? currentTrack.album : "")
+                        + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : "")
                 // verticalAlignment:  Image.AlignTop
                 // fillMode: Image.PreserveAspectFit
 

@@ -23,6 +23,7 @@ class AsyncImageResponse : public QQuickImageResponse
 public:
     AsyncImageResponse(const QString &id, const QSize &requestedSize);
     QQuickTextureFactory *textureFactory() const override;
+    void complete(const QImage &image);
 
 private:
     void finishWithImage(const QImage &image);
