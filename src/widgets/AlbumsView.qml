@@ -91,6 +91,18 @@ StackView
                     topPadding: 10
                     bottomPadding: 10
                 }
+
+                Label
+                {
+                    text:
+                    {
+                        const title = String(control.currentAlbum || control.currentArtist || "")
+                        return title.length > 24 ? `${title.slice(0, 23)}…` : title
+                    }
+                    font.bold: true
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: Maui.Style.units.gridUnit * 14
+                }
             }
 
             onQueueTrack: (index) => Player.queueTracks([listModel.get(index)], index)

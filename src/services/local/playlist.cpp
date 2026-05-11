@@ -2,7 +2,10 @@
 #include "../../models/tracks/tracksmodel.h"
 
 // #include <QRandomGenerator>
+#include <QDir>
 #include <QDebug>
+#include <QFile>
+#include <QFileInfo>
 #include <QSettings>
 #include <QSaveFile>
 #include <QTextStream>
@@ -275,6 +278,59 @@ bool Playlist::exportM3U(const QString &filePath)
         return false;
     }
 
+    return true;
+}
+
+bool Playlist::importM3U(const QString &filePath)
+{
+    if (!m_model || filePath.trimmed().isEmpty()) {
+        return false;
+    }
+
+    const auto sourceUrl = QUrl::fromUserInput(filePath);
+    const auto localPath = sourceUrl.isLocalFile() ? sourceUrl.toLocalFile() : filePath;
+
+    QFile file(localPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Could not open playlist file for reading:" << localPath;
+        return false;
+    }
+
+    const auto baseDir = QFileInfo(localPath).absolutePath();
+    QStringList trackUrls;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        const auto line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith(QLatin1Char('#'))) {
+            continue;
+        }
+
+        QUrl trackUrl;
+        if (line.contains(QStringLiteral("://")) || line.startsWith(QStringLiteral("file:/"))) {
+            trackUrl = QUrl::fromUserInput(line);
+        } else {
+            const QFileInfo lineInfo(line);
+            const auto resolvedPath = lineInfo.isAbsolute() ? line : QDir(baseDir).filePath(line);
+            trackUrl = QUrl::fromLocalFile(QFileInfo(resolvedPath).absoluteFilePath());
+        }
+
+        if (trackUrl.isValid()) {
+            trackUrls << trackUrl.toString();
+        }
+    }
+
+    if (trackUrls.isEmpty()) {
+        return false;
+    }
+
+    m_model->clear();
+    if (!m_model->appendUrls(trackUrls)) {
+        return false;
+    }
+
+    // Keep the queue loaded without forcing playback start.
+    setCurrentIndex(-1);
     return true;
 }
 

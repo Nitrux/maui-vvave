@@ -44,7 +44,7 @@ Maui.Page
         clip: true
         anchors.fill: parent
         list.autoPopulate: false
-        footBar.visible: !mainlistEmpty
+        footBar.visible: true
         footerMargins: Maui.Style.defaultPadding
         background: null
         footBar.rightContent:[
@@ -52,6 +52,7 @@ Maui.Page
             ToolButton
             {
                 icon.name: "edit-clear"
+                enabled: !mainlistEmpty
                 ToolTip.visible: hovered
                 ToolTip.text: i18n("Clear playlist")
                 onClicked:
@@ -85,14 +86,30 @@ Maui.Page
         footBar.leftContent: [
             ToolButton
             {
+                icon.name: "document-open"
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Open playlist from file")
+                onClicked: openList()
+            },
+
+            ToolButton
+            {
                 icon.name: "document-save"
+                enabled: !mainlistEmpty
                 ToolTip.visible: hovered
                 ToolTip.text: i18n("Save playlist to file")
                 onClicked: saveList()
             },
 
+            ToolSeparator 
+            {
+                topPadding: 10
+                bottomPadding: 10
+            },
+
             ToolButton
             {
+                enabled: !mainlistEmpty
                 icon.name: switch(playlist.repeatMode)
                            {
                            case Vvave.Playlist.NoRepeat: return "media-repeat-none"
@@ -121,6 +138,7 @@ Maui.Page
 
             ToolButton
             {
+                enabled: !mainlistEmpty
                 checked:  playlist.playMode === Vvave.Playlist.Shuffle
                 icon.name: switch(playlist.playMode)
                            {
@@ -327,22 +345,48 @@ Maui.Page
 
         property int totalMoves: 0
 
+        function sanitizedToastPath(path)
+        {
+            const rawPath = String(path || "")
+            const localPath = rawPath.startsWith("file://") ? rawPath.slice(7) : rawPath
+
+            try {
+                return decodeURIComponent(localPath)
+            } catch (error) {
+                return localPath
+            }
+        }
+
+        function openList()
+        {
+            const props = ({
+                               'mode': FB.FileDialog.Modes.OpenFiles,
+                               'singleSelection': true,
+                               'currentPath': FB.FM.homePath(),
+                               'nameFilters': ["Playlists (*.m3u *.m3u8 *.pls)", "All files (*)"],
+                               'callback': function(paths)
+                               {
+                                   if (!paths || paths.length === 0)
+                                       return
+
+                                   player.stop()
+                                   const ok = playlist.importM3U(paths[0])
+                                   const toastPath = sanitizedToastPath(paths[0])
+                                   if (ok)
+                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist loaded"), toastPath)
+                                   else
+                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not open playlist"), toastPath)
+                               }
+                           })
+
+            const dialog = _fileDialogComponent.createObject(root, props)
+            dialog.open()
+        }
+
         function saveList()
         {
             if (listModel.list.count <= 0)
                 return
-
-            function sanitizedToastPath(path)
-            {
-                const rawPath = String(path || "")
-                const localPath = rawPath.startsWith("file://") ? rawPath.slice(7) : rawPath
-
-                try {
-                    return decodeURIComponent(localPath)
-                } catch (error) {
-                    return localPath
-                }
-            }
 
             const suggested = "VVave Playlist " + Qt.formatDateTime(new Date(), "yyyy-MM-dd hh-mm-ss") + ".m3u"
             const props = ({
