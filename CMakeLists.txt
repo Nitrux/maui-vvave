@@ -52,7 +52,7 @@ include(ECMSetupVersion)
 include(ECMSourceVersionControl)
 include(FeatureSummary)
 
-find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Qml Quick QuickControls2 Network Xml Multimedia)
+find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Concurrent Qml Quick QuickControls2 Network Xml Multimedia)
 find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
 
 find_package(MauiKit4 REQUIRED COMPONENTS FileBrowsing Audio)

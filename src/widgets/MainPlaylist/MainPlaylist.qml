@@ -166,67 +166,6 @@ Maui.Page
         {
             width: parent.width
 
-            Loader
-            {
-                width: visible ? parent.width : 0
-                height: width
-
-                asynchronous: true
-                active: !focusView && control.height > control.width*3 && currentTrackIndex >= 0
-                visible: active && !mainlistEmpty
-                sourceComponent: Item
-                {
-                    scale: _mouseArea.pressed ? 0.9 :  1
-
-                    Behavior on scale
-                    {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                    }
-
-                    Maui.GalleryRollTemplate
-                    {
-                        anchors.fill: parent
-                        anchors.bottomMargin: Maui.Style.space.medium
-                        radius: Maui.Style.radiusV
-                        interactive: true
-                        fillMode: Image.PreserveAspectCrop
-
-                        images: [
-                            "image://artwork/album:"
-                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
-                            + ":"
-                            + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : ""),
-                            "image://artwork/artist:"
-                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
-                        ]
-                    }
-
-                    MouseArea
-                    {
-                        id:_mouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-
-                        Rectangle
-                        {
-                            anchors.fill: parent
-                            color: Maui.Theme.backgroundColor
-                            visible: parent.containsMouse
-                            opacity: parent.pressed ? 0.8 : 0.6
-                        }
-
-                    }
-                }
-
-                OpacityAnimator on opacity
-                {
-                    from: 0
-                    to: 1
-                    duration: Maui.Style.units.longDuration
-                    running: parent.status === Loader.Ready
-                }
-            }
-
             Rectangle
             {
                 visible: root.sync
@@ -393,6 +332,18 @@ Maui.Page
             if (listModel.list.count <= 0)
                 return
 
+            function sanitizedToastPath(path)
+            {
+                const rawPath = String(path || "")
+                const localPath = rawPath.startsWith("file://") ? rawPath.slice(7) : rawPath
+
+                try {
+                    return decodeURIComponent(localPath)
+                } catch (error) {
+                    return localPath
+                }
+            }
+
             const suggested = "VVave Playlist " + Qt.formatDateTime(new Date(), "yyyy-MM-dd hh-mm-ss") + ".m3u"
             const props = ({
                                'mode': FB.FileDialog.Modes.Save,
@@ -405,10 +356,11 @@ Maui.Page
                                        return
 
                                    const ok = playlist.exportM3U(paths[0])
+                                   const toastPath = sanitizedToastPath(paths[0])
                                    if (ok)
-                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist saved"), paths[0])
+                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist saved"), toastPath)
                                    else
-                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not save playlist"), paths[0])
+                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not save playlist"), toastPath)
                                }
                            })
 

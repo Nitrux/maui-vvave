@@ -89,6 +89,7 @@ target_link_libraries(${PROJECT_NAME}
     MauiKit4::FileBrowsing
     MauiKit4::Audio
     Qt6::Core
+    Qt6::Concurrent
     Qt6::Network
     Qt6::Qml
     Qt6::Xml

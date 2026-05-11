@@ -8,12 +8,20 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QColor>
+#include <QDebug>
+#include <QElapsedTimer>
+#include <QFile>
 #include <QFileInfo>
 #include <QHash>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
 #include <QSet>
 #include <QSettings>
 #include <QTimer>
+#include <QtConcurrent>
 #include <array>
 #include <algorithm>
 #include <limits>
@@ -32,6 +40,47 @@ QHash<QString, QList<int>> s_albumTrackRows;
 QHash<QString, int> s_trackRowByUrl;
 bool s_trackCacheValid = false;
 bool s_collectionIndexesValid = false;
+constexpr int kTrackCacheVersion = 1;
+constexpr int kParallelParseThreshold = 12;
+
+struct CachedTrackEntry
+{
+    FMH::MODEL model;
+    qint64 size = -1;
+    qint64 modifiedMs = -1;
+};
+
+struct LoadedTrackCache
+{
+    QHash<QString, CachedTrackEntry> entries;
+    bool valid = false;
+};
+
+struct PendingTrackParse
+{
+    int row = -1;
+    QString fileUrl;
+    QString absoluteFilePath;
+    qint64 size = -1;
+    qint64 modifiedMs = -1;
+};
+
+struct ParsedTrackResult
+{
+    int row = -1;
+    QString fileUrl;
+    CachedTrackEntry entry;
+};
+
+struct CollectionScanStats
+{
+    int totalTracks = 0;
+    int reusedTracks = 0;
+    int parsedTracks = 0;
+    qint64 elapsedMs = 0;
+};
+
+CollectionScanStats s_lastScanStats;
 
 const QSet<QString> &audioSuffixes()
 {
@@ -41,6 +90,24 @@ const QSet<QString> &audioSuffixes()
         QStringLiteral("ape"), QStringLiteral("alac"), QStringLiteral("mp2"), QStringLiteral("mp1")};
 
     return kAudioSuffixes;
+}
+
+const QStringList &audioNameFilters()
+{
+    static const QStringList kAudioNameFilters = [] {
+        QStringList filters;
+        const auto suffixes = audioSuffixes().values();
+        filters.reserve(suffixes.size());
+
+        for (const auto &suffix : suffixes) {
+            filters << (QStringLiteral("*.") + suffix);
+        }
+
+        filters.sort(Qt::CaseInsensitive);
+        return filters;
+    }();
+
+    return kAudioNameFilters;
 }
 
 QString normalizeLookupValue(const QString &value)
@@ -79,6 +146,296 @@ bool isAudioFile(const QString &path)
 {
     const QFileInfo info(path);
     return info.exists() && info.isFile() && hasAudioSuffix(info.suffix());
+}
+
+QString collectionCacheFilePath()
+{
+    return QDir(BAE::CachePath.toLocalFile()).filePath(QStringLiteral("collection-cache-v1.json"));
+}
+
+qint64 fileModifiedMs(const QFileInfo &fileInfo)
+{
+    return fileInfo.lastModified().toMSecsSinceEpoch();
+}
+
+QJsonObject modelToJson(const FMH::MODEL &model)
+{
+    QJsonObject object;
+
+    for (auto it = model.constBegin(); it != model.constEnd(); ++it) {
+        const auto keyName = FMH::MODEL_NAME.value(it.key());
+        if (!keyName.isEmpty()) {
+            object.insert(keyName, it.value());
+        }
+    }
+
+    return object;
+}
+
+FMH::MODEL modelFromJson(const QJsonObject &object)
+{
+    FMH::MODEL model;
+
+    for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
+        const auto keyIt = FMH::MODEL_NAME_KEY.constFind(it.key());
+        if (keyIt != FMH::MODEL_NAME_KEY.constEnd()) {
+            model.insert(keyIt.value(), it.value().toString());
+        }
+    }
+
+    return model;
+}
+
+LoadedTrackCache loadTrackCache()
+{
+    LoadedTrackCache cache;
+    QFile file(collectionCacheFilePath());
+
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        return cache;
+    }
+
+    const auto document = QJsonDocument::fromJson(file.readAll());
+    if (!document.isObject()) {
+        return cache;
+    }
+
+    const auto root = document.object();
+    if (root.value(QStringLiteral("version")).toInt() != kTrackCacheVersion) {
+        return cache;
+    }
+
+    cache.valid = true;
+
+    const auto tracksValue = root.value(QStringLiteral("tracks"));
+    if (!tracksValue.isArray()) {
+        return cache;
+    }
+
+    const auto tracks = tracksValue.toArray();
+    for (const auto &trackValue : tracks) {
+        if (!trackValue.isObject()) {
+            continue;
+        }
+
+        const auto trackObject = trackValue.toObject();
+        const auto modelValue = trackObject.value(QStringLiteral("model"));
+        if (!modelValue.isObject()) {
+            continue;
+        }
+
+        CachedTrackEntry entry;
+        entry.model = modelFromJson(modelValue.toObject());
+        entry.size = trackObject.value(QStringLiteral("size")).toVariant().toLongLong();
+        entry.modifiedMs = trackObject.value(QStringLiteral("modifiedMs")).toVariant().toLongLong();
+
+        const auto url = entry.model.value(FMH::MODEL_KEY::URL);
+        if (!url.isEmpty()) {
+            cache.entries.insert(url, entry);
+        }
+    }
+
+    return cache;
+}
+
+void saveTrackCache(const QHash<QString, CachedTrackEntry> &entries)
+{
+    QSaveFile file(collectionCacheFilePath());
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        return;
+    }
+
+    QJsonArray tracks;
+    auto urls = entries.keys();
+    std::sort(urls.begin(), urls.end(), [](const QString &left, const QString &right) {
+        return QString::localeAwareCompare(left, right) < 0;
+    });
+
+    for (const auto &url : urls) {
+        const auto entry = entries.value(url);
+        if (entry.model.isEmpty()) {
+            continue;
+        }
+
+        QJsonObject trackObject;
+        trackObject.insert(QStringLiteral("size"), QString::number(entry.size));
+        trackObject.insert(QStringLiteral("modifiedMs"), QString::number(entry.modifiedMs));
+        trackObject.insert(QStringLiteral("model"), modelToJson(entry.model));
+        tracks.append(trackObject);
+    }
+
+    QJsonObject root;
+    root.insert(QStringLiteral("version"), kTrackCacheVersion);
+    root.insert(QStringLiteral("tracks"), tracks);
+
+    if (file.write(QJsonDocument(root).toJson(QJsonDocument::Compact)) == -1) {
+        file.cancelWriting();
+        return;
+    }
+
+    file.commit();
+}
+
+bool canReuseCachedTrack(const CachedTrackEntry &entry, const QFileInfo &fileInfo)
+{
+    return !entry.model.isEmpty() && entry.size == fileInfo.size() && entry.modifiedMs == fileModifiedMs(fileInfo);
+}
+
+ParsedTrackResult parseTrackEntry(const PendingTrackParse &pendingParse)
+{
+    ParsedTrackResult result;
+    result.row = pendingParse.row;
+    result.fileUrl = pendingParse.fileUrl;
+    result.entry.size = pendingParse.size;
+    result.entry.modifiedMs = pendingParse.modifiedMs;
+    result.entry.model = vvave::trackInfo(QUrl::fromLocalFile(pendingParse.absoluteFilePath));
+    return result;
+}
+
+bool enqueueFileForScan(const QFileInfo &fileInfo,
+                        const QHash<QString, CachedTrackEntry> &cachedEntries,
+                        QHash<QString, CachedTrackEntry> &updatedEntries,
+                        QVector<FMH::MODEL> &trackSlots,
+                        QVector<PendingTrackParse> &pendingParses,
+                        QSet<QString> &seenUrls,
+                        int &reusedTracks,
+                        bool &cacheDirty)
+{
+    if (!fileInfo.exists() || !fileInfo.isFile()) {
+        return false;
+    }
+
+    const auto absoluteFilePath = fileInfo.absoluteFilePath();
+    const auto fileUrl = QUrl::fromLocalFile(absoluteFilePath).toString();
+    if (seenUrls.contains(fileUrl)) {
+        return false;
+    }
+
+    seenUrls.insert(fileUrl);
+    trackSlots.append(FMH::MODEL());
+    const int row = trackSlots.size() - 1;
+
+    const auto cachedIt = cachedEntries.constFind(fileUrl);
+    if (cachedIt != cachedEntries.constEnd() && canReuseCachedTrack(cachedIt.value(), fileInfo)) {
+        const auto entry = cachedIt.value();
+        trackSlots[row] = entry.model;
+        updatedEntries.insert(fileUrl, entry);
+        reusedTracks++;
+        return true;
+    }
+
+    cacheDirty = true;
+    pendingParses.append(PendingTrackParse{
+        row,
+        fileUrl,
+        absoluteFilePath,
+        fileInfo.size(),
+        fileModifiedMs(fileInfo),
+    });
+    return true;
+}
+
+FMH::MODEL_LIST materializeTrackList(const QVector<FMH::MODEL> &trackSlots)
+{
+    FMH::MODEL_LIST tracks;
+    tracks.reserve(trackSlots.size());
+
+    for (const auto &track : trackSlots) {
+        if (!track.isEmpty()) {
+            tracks << track;
+        }
+    }
+
+    return tracks;
+}
+
+QVector<ParsedTrackResult> parsePendingTracks(const QVector<PendingTrackParse> &pendingParses)
+{
+    if (pendingParses.isEmpty()) {
+        return {};
+    }
+
+    if (pendingParses.size() < kParallelParseThreshold) {
+        QVector<ParsedTrackResult> parsedResults;
+        parsedResults.reserve(pendingParses.size());
+        for (const auto &pendingParse : pendingParses) {
+            parsedResults.append(parseTrackEntry(pendingParse));
+        }
+        return parsedResults;
+    }
+
+    return QtConcurrent::blockingMapped(pendingParses, [](const PendingTrackParse &pendingParse) {
+        return parseTrackEntry(pendingParse);
+    });
+}
+
+void applyParsedTracks(const QVector<ParsedTrackResult> &parsedResults,
+                       QVector<FMH::MODEL> &trackSlots,
+                       QHash<QString, CachedTrackEntry> &updatedEntries)
+{
+    for (const auto &result : parsedResults) {
+        if (result.row < 0 || result.row >= trackSlots.size()) {
+            continue;
+        }
+
+        if (result.entry.model.isEmpty()) {
+            continue;
+        }
+
+        trackSlots[result.row] = result.entry.model;
+        updatedEntries.insert(result.fileUrl, result.entry);
+    }
+}
+
+void logScanSummary(const CollectionScanStats &stats)
+{
+    qInfo().nospace() << "[COLLECTION] scanned " << stats.totalTracks << " tracks in " << stats.elapsedMs
+                      << " ms (reused=" << stats.reusedTracks << ", parsed=" << stats.parsedTracks << ")";
+}
+
+void resetScanStats()
+{
+    s_lastScanStats = {};
+}
+
+void updateScanStats(const CollectionScanStats &stats)
+{
+    s_lastScanStats = stats;
+}
+
+const CollectionScanStats &lastScanStats()
+{
+    return s_lastScanStats;
+}
+
+void collectAudioFilesFromSource(const QFileInfo &sourceInfo,
+                                 const QHash<QString, CachedTrackEntry> &cachedEntries,
+                                 QHash<QString, CachedTrackEntry> &updatedEntries,
+                                 QVector<FMH::MODEL> &trackSlots,
+                                 QVector<PendingTrackParse> &pendingParses,
+                                 QSet<QString> &seenUrls,
+                                 int &reusedTracks,
+                                 bool &cacheDirty)
+{
+    if (!sourceInfo.exists()) {
+        return;
+    }
+
+    if (sourceInfo.isFile()) {
+        const auto normalizedUrl = QUrl::fromLocalFile(sourceInfo.absoluteFilePath()).toString();
+        if (!isAudioFile(sourceInfo.absoluteFilePath()) || seenUrls.contains(normalizedUrl)) {
+            return;
+        }
+
+        enqueueFileForScan(sourceInfo, cachedEntries, updatedEntries, trackSlots, pendingParses, seenUrls, reusedTracks, cacheDirty);
+        return;
+    }
+
+    QDirIterator it(sourceInfo.absoluteFilePath(), audioNameFilters(), QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        enqueueFileForScan(it.fileInfo(), cachedEntries, updatedEntries, trackSlots, pendingParses, seenUrls, reusedTracks, cacheDirty);
+    }
 }
 
 int trackNumberForSort(const FMH::MODEL &track)
@@ -368,8 +725,21 @@ FMH::MODEL_LIST vvave::localTracks()
         return s_cachedTracks;
     }
 
-    FMH::MODEL_LIST tracks;
+    QElapsedTimer timer;
+    timer.start();
+
+    const auto loadedCache = loadTrackCache();
+    auto updatedCacheEntries = QHash<QString, CachedTrackEntry>();
+    updatedCacheEntries.reserve(loadedCache.entries.size() > 128 ? loadedCache.entries.size() : 128);
+
+    QVector<FMH::MODEL> trackSlots;
+    trackSlots.reserve(loadedCache.entries.size() > 128 ? loadedCache.entries.size() : 128);
+    QVector<PendingTrackParse> pendingParses;
+    pendingParses.reserve(128);
+
     QSet<QString> seenUrls;
+    bool cacheDirty = !loadedCache.valid;
+    int reusedTracks = 0;
 
     for (const auto &source : QUrl::fromStringList(vvave::sources())) {
         if (!source.isLocalFile()) {
@@ -378,50 +748,46 @@ FMH::MODEL_LIST vvave::localTracks()
 
         const auto sourcePath = source.toLocalFile();
         QFileInfo sourceInfo(sourcePath);
+        collectAudioFilesFromSource(sourceInfo,
+                                    loadedCache.entries,
+                                    updatedCacheEntries,
+                                    trackSlots,
+                                    pendingParses,
+                                    seenUrls,
+                                    reusedTracks,
+                                    cacheDirty);
+    }
 
-        if (!sourceInfo.exists()) {
-            continue;
-        }
+    const auto parsedResults = parsePendingTracks(pendingParses);
+    applyParsedTracks(parsedResults, trackSlots, updatedCacheEntries);
 
-        if (sourceInfo.isFile()) {
-            const auto normalizedUrl = QUrl::fromLocalFile(sourceInfo.absoluteFilePath()).toString();
-            if (!isAudioFile(sourceInfo.absoluteFilePath()) || seenUrls.contains(normalizedUrl)) {
-                continue;
-            }
+    const int parsedTracks = pendingParses.size();
+    const auto tracks = materializeTrackList(trackSlots);
 
-            seenUrls.insert(normalizedUrl);
-            auto model = vvave::trackInfo(QUrl::fromLocalFile(sourceInfo.absoluteFilePath()));
-            if (!model.isEmpty()) {
-                tracks << model;
-            }
-            continue;
-        }
+    CollectionScanStats stats;
+    stats.totalTracks = tracks.size();
+    stats.reusedTracks = reusedTracks;
+    stats.parsedTracks = parsedTracks;
+    stats.elapsedMs = timer.elapsed();
+    updateScanStats(stats);
 
-        QDirIterator it(sourcePath, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            const auto fileInfo = it.fileInfo();
-            if (!fileInfo.isFile() || !hasAudioSuffix(fileInfo.suffix())) {
-                continue;
-            }
+    if (loadedCache.valid && stats.parsedTracks == 0 && updatedCacheEntries.size() == loadedCache.entries.size()) {
+        cacheDirty = false;
+    }
 
-            const auto absoluteFilePath = fileInfo.absoluteFilePath();
-            const auto fileUrl = QUrl::fromLocalFile(absoluteFilePath).toString();
-            if (seenUrls.contains(fileUrl)) {
-                continue;
-            }
+    if (updatedCacheEntries.size() != loadedCache.entries.size()) {
+        cacheDirty = true;
+    }
 
-            seenUrls.insert(fileUrl);
-            auto model = vvave::trackInfo(QUrl::fromLocalFile(absoluteFilePath));
-            if (!model.isEmpty()) {
-                tracks << model;
-            }
-        }
+    if (cacheDirty) {
+        saveTrackCache(updatedCacheEntries);
     }
 
     s_cachedTracks = tracks;
     s_trackCacheValid = true;
     ensureCollectionIndexes();
+
+    logScanSummary(lastScanStats());
     return s_cachedTracks;
 }
 
@@ -620,10 +986,9 @@ bool vvave::removeSource(const QString &source)
     settings.setValue("SOURCES", QVariant::fromValue(urls));
     settings.endGroup();
 
-    invalidateTrackCache();
+    scanDir(QUrl::fromStringList(urls));
     Q_EMIT this->sourceRemoved(QUrl(source));
     Q_EMIT sourcesChanged();
-    Q_EMIT collectionChanged();
     return true;
 }
 
@@ -631,14 +996,24 @@ void vvave::scanDir(const QList<QUrl> &paths)
 {
     Q_UNUSED(paths)
     invalidateTrackCache();
-    Q_EMIT collectionChanged();
+    resetScanStats();
+
+    if (m_scanScheduled) {
+        return;
+    }
 
     m_scanning = true;
     Q_EMIT scanningChanged(m_scanning);
+    m_scanScheduled = true;
 
     QTimer::singleShot(0, this, [this]() {
+        localTracks();
+        m_scanScheduled = false;
         m_scanning = false;
         Q_EMIT scanningChanged(m_scanning);
+        Q_EMIT collectionChanged();
+        const auto stats = lastScanStats();
+        Q_EMIT scanFinished(stats.totalTracks, stats.reusedTracks, stats.parsedTracks, stats.elapsedMs);
     });
 }
 

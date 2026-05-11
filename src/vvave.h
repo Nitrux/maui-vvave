@@ -58,12 +58,14 @@ public Q_SLOTS:
 private:
     bool m_fetchArtwork = false;
     bool m_scanning = false;
+    bool m_scanScheduled = false;
 
 Q_SIGNALS:
     void sourceAdded(QUrl source);
     void sourceRemoved(QUrl source);
 
     void collectionChanged();
+    void scanFinished(int totalTracks, int reusedTracks, int parsedTracks, qint64 elapsedMs);
     void sourcesChanged();
     void fetchArtworkChanged(bool fetchArtwork);
     void scanningChanged(bool scanning);
