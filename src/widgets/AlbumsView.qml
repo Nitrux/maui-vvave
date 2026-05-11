@@ -64,6 +64,7 @@ StackView
             list.query: control.currentQuery
             trackNumberVisible: true
             coverArtVisible: settings.fetchArtwork
+            showGenreSort: false
             collapseRepeatedAlbumArt: false
             focus: true
 

@@ -38,6 +38,7 @@ Maui.Page
     property bool showQuickActions : true
     property bool group : false
     property bool enforceDefaultTitleSort: false
+    property bool showGenreSort: true
     property bool _defaultSortApplied: false
 
     readonly property alias contextMenu : contextMenu
@@ -124,6 +125,7 @@ Maui.Page
         ComboBox
         {
             id: _genreSortCombo
+            visible: control.showGenreSort
             implicitWidth: 170
             model: [i18n("Genre Ascending"), i18n("Genre Descending")]
             currentIndex: 0
