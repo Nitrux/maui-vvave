@@ -104,7 +104,11 @@ StackView
                     Layout.maximumHeight: 400
                     Layout.minimumHeight: 100
 
-                    onLoaded: item.positionViewAtIndex(currentTrackIndex, ListView.Center)
+                    onLoaded:
+                    {
+                        if (item && item.syncToCurrentTrack)
+                            item.syncToCurrentTrack()
+                    }
                     sourceComponent: ListView
                     {
                         id: _listView
@@ -114,6 +118,21 @@ StackView
 
                         focus: true
                         interactive: true
+
+                        function syncToCurrentTrack()
+                        {
+                            const idx = root.currentTrackIndex
+                            if (idx < 0 || idx >= count)
+                                return
+
+                            if (currentIndex !== idx)
+                                currentIndex = idx
+
+                            positionViewAtIndex(idx, ListView.Center)
+                        }
+
+                        Component.onCompleted: Qt.callLater(syncToCurrentTrack)
+                        onCountChanged: Qt.callLater(syncToCurrentTrack)
 
                         Binding on currentIndex
                         {
@@ -133,6 +152,20 @@ StackView
                         snapMode: ListView.SnapOneItem
                         model: mainPlaylist.listModel
                         highlightRangeMode: ListView.ApplyRange
+
+                        Connections
+                        {
+                            target: root
+                            function onCurrentTrackIndexChanged()
+                            {
+                                _listView.syncToCurrentTrack()
+                            }
+
+                            function onCurrentTrackChanged()
+                            {
+                                _listView.syncToCurrentTrack()
+                            }
+                        }
 
                         keyNavigationEnabled: true
                         keyNavigationWraps : true

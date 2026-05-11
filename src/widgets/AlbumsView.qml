@@ -160,12 +160,19 @@ StackView
 
                 Label
                 {
-                    text: String(control.currentArtist || "")
+                    text:
+                    {
+                        const artistName = String(control.currentArtist || "")
+                        return artistName.length > 12 ? `${artistName.slice(0, 11)}…` : artistName
+                    }
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.maximumWidth: Maui.Style.units.gridUnit * 12
                 }
             }
+            headBar.leftContent: Item {}
+            headBar.middleContent: Item {}
+            headBar.rightContent: Item {}
 
             Connections
             {

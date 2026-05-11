@@ -188,7 +188,7 @@ Loader
                 Maui.Icon
                 {
                     anchors.centerIn: parent
-                    source: "quickview"
+                    source: "view-media-album-cover"
                     height: 48
                     width: 48
                 }

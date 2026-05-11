@@ -65,13 +65,13 @@ void Pulpo::send(const SERVICES &service)
 {
     switch (service) {
     case SERVICES::LastFm: {
-        auto lastfm = new class lastfm();
-        connect(lastfm, &lastfm::responseReady, [this, lastfm](PULPO::REQUEST request, PULPO::RESPONSES responses) {
+        auto lastFmService = new class lastfm();
+        connect(lastFmService, &lastfm::responseReady, [this, lastFmService](PULPO::REQUEST request, PULPO::RESPONSES responses) {
             this->passSignal(request, responses);
-            lastfm->deleteLater();
+            lastFmService->deleteLater();
         });
 
-        connect(lastfm, &lastfm::error, [this, service, lastfm](PULPO::REQUEST request) {
+        connect(lastFmService, &lastfm::error, [this, service, lastFmService](PULPO::REQUEST request) {
             if (!request.services.isEmpty()) {
                 request.services.removeOne(service);
                 this->request(request);
@@ -79,21 +79,21 @@ void Pulpo::send(const SERVICES &service)
                 Q_EMIT this->error();
             }
 
-            lastfm->deleteLater();
+            lastFmService->deleteLater();
         });
 
-        lastfm->set(this->req);
+        lastFmService->set(this->req);
         break;
     }
 
     case SERVICES::Spotify: {
-        auto spotify = new class spotify();
-        connect(spotify, &lastfm::responseReady, [this, spotify](PULPO::REQUEST request, PULPO::RESPONSES responses) {
+        auto spotifyServiceObj = new class spotify();
+        connect(spotifyServiceObj, &spotify::responseReady, [this, spotifyServiceObj](PULPO::REQUEST request, PULPO::RESPONSES responses) {
             this->passSignal(request, responses);
-            spotify->deleteLater();
+            spotifyServiceObj->deleteLater();
         });
 
-        connect(spotify, &lastfm::error, [this, service, spotify](PULPO::REQUEST request) {
+        connect(spotifyServiceObj, &spotify::error, [this, service, spotifyServiceObj](PULPO::REQUEST request) {
             if (!request.services.isEmpty()) {
                 request.services.removeOne(service);
                 this->request(request);
@@ -101,10 +101,10 @@ void Pulpo::send(const SERVICES &service)
                 Q_EMIT this->error();
             }
 
-            spotify->deleteLater();
+            spotifyServiceObj->deleteLater();
         });
 
-        spotify->set(this->req);
+        spotifyServiceObj->set(this->req);
         break;
     }
 

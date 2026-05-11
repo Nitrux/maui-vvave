@@ -267,7 +267,7 @@ Maui.AltBrowser
             iconSource: control.prefix === "album" ? "" : "view-media-artist"
 
             template.labelsVisible: settings.showTitles
-            template.alignment: Qt.AlignLeft
+            template.alignment: Qt.AlignHCenter
             template.fillMode: Image.PreserveAspectFit
 
             onClicked:

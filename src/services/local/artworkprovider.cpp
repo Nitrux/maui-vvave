@@ -19,7 +19,15 @@ void AsyncImageResponse::finishWithImage(const QImage &image)
         return;
     }
 
-    m_image = image;
+    if (!image.isNull()) {
+        m_image = image;
+    } else {
+        m_image = QImage(":/assets/cover.png");
+        if (m_image.isNull()) {
+            m_image = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
+            m_image.fill(Qt::transparent);
+        }
+    }
     m_completed = true;
     Q_EMIT this->finished();
 }
@@ -102,7 +110,7 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
         QPointer<ArtworkFetcher> guardedFetcher(m_artworkFetcher);
         connect(m_artworkFetcher, &ArtworkFetcher::finished, m_artworkFetcher, &ArtworkFetcher::deleteLater);
 
-        connect(m_artworkFetcher, &ArtworkFetcher::artworkReady, [this, m_artworkFetcher](QUrl url) {
+        connect(m_artworkFetcher, &ArtworkFetcher::artworkReady, this, [this, m_artworkFetcher](QUrl url) {
             qDebug() << "[ARTWORK] fetch-finished url=" << url;
             if (url.isEmpty() || !url.isLocalFile()) {
                 qWarning() << "[ARTWORK] non-local/empty fetch result, using cover fallback";
@@ -145,7 +153,16 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
 
 QQuickTextureFactory *AsyncImageResponse::textureFactory() const
 {
-    return QQuickTextureFactory::textureFactoryForImage(m_image);
+    if (!m_image.isNull()) {
+        return QQuickTextureFactory::textureFactoryForImage(m_image);
+    }
+
+    QImage fallback(":/assets/cover.png");
+    if (fallback.isNull()) {
+        fallback = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
+        fallback.fill(Qt::transparent);
+    }
+    return QQuickTextureFactory::textureFactoryForImage(fallback);
 }
 
 QQuickImageResponse *ArtworkProvider::requestImageResponse(const QString &id, const QSize &requestedSize)
@@ -162,7 +179,12 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
     request.ontology = ontology;
     request.services = {PULPO::SERVICES::LastFm, PULPO::SERVICES::Spotify};
     request.info = {PULPO::INFO::ARTWORK};
-    request.callback = [&](PULPO::REQUEST request, PULPO::RESPONSES responses) {
+    QPointer<ArtworkFetcher> self(this);
+    request.callback = [self](PULPO::REQUEST request, PULPO::RESPONSES responses) {
+        if (!self) {
+            return;
+        }
+
         qDebug() << "[ARTWORK] fetch-callback responses=" << responses.size() << "track=" << request.track;
 
         bool requestedDownload = false;
@@ -175,15 +197,21 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
                 if (!imageUrl.isEmpty()) {
                     requestedDownload = true;
                     auto downloader = new FMH::Downloader;
-                    QObject::connect(downloader, &FMH::Downloader::fileSaved, [&, downloader](QString path) mutable {
+                    QObject::connect(downloader, &FMH::Downloader::fileSaved, [self, downloader](QString path) mutable {
                         downloader->deleteLater();
+                        if (!self) {
+                            return;
+                        }
                         qDebug() << "[ARTWORK] download-saved path=" << path;
-                        Q_EMIT this->artworkReady(QUrl::fromLocalFile(path));
+                        Q_EMIT self->artworkReady(QUrl::fromLocalFile(path));
                     });
-                    QObject::connect(downloader, &FMH::Downloader::warning, [&, downloader](const QString &message) mutable {
+                    QObject::connect(downloader, &FMH::Downloader::warning, [self, downloader](const QString &message) mutable {
                         downloader->deleteLater();
+                        if (!self) {
+                            return;
+                        }
                         qWarning() << "[ARTWORK] download-warning:" << message << "using cover fallback";
-                        Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
+                        Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
                     });
 
                     const auto format = res.value.toUrl().fileName().endsWith(".png") ? ".png" : ".jpg";
@@ -201,13 +229,13 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
 
         if (!requestedDownload) {
             qWarning() << "[ARTWORK] no downloadable image in responses, using cover fallback";
-            Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
+            Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
         }
     };
 
     auto pulpo = new Pulpo;
     QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
-    QObject::connect(pulpo, &Pulpo::error, [this, pulpo]() {
+    QObject::connect(pulpo, &Pulpo::error, this, [this, pulpo]() {
         qWarning() << "[ARTWORK] pulpo request error, using cover fallback";
         Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
         pulpo->deleteLater();

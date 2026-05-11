@@ -371,7 +371,11 @@ int MediaPlayer2Player::currentTrack() const
 void MediaPlayer2Player::setCurrentTrack(int newTrackPosition)
 {
     m_currentTrack = m_playListControler->currentTrack().value("url").toString();
-    m_currentTrackId = QDBusObjectPath(QLatin1String("/org/maui/vvave/playlist/") + QString::number(newTrackPosition)).path();
+    if (newTrackPosition < 0 || m_currentTrack.isEmpty()) {
+        m_currentTrackId = QStringLiteral("/org/maui/vvave/playlist/NoTrack");
+    } else {
+        m_currentTrackId = QStringLiteral("/org/maui/vvave/playlist/%1").arg(newTrackPosition);
+    }
 
     Q_EMIT currentTrackChanged();
 

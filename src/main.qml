@@ -636,7 +636,7 @@ Maui.ApplicationWindow
         {
             spacing: Maui.Style.space.small
             Layout.alignment: Qt.AlignCenter
-            visible: currentTrackIndex >= 0
+            visible: currentTrackIndex >= 0 && !root.focusView
             Layout.maximumWidth: Maui.Style.units.gridUnit * 18
 
             Rectangle
@@ -714,6 +714,7 @@ Maui.ApplicationWindow
             {
                 id: _footerVolumeSlider
                 Layout.preferredWidth: Maui.Handy.isMobile ? Maui.Style.units.gridUnit * 4 : Maui.Style.units.gridUnit * 6
+                Layout.rightMargin: Maui.Style.space.small
                 from: 0
                 to: 100
                 stepSize: 5

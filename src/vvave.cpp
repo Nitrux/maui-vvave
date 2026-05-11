@@ -308,6 +308,10 @@ FMH::MODEL_LIST vvave::tracksForTag(const QString &tag)
 
 FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
 {
+    const auto normalizedEquals = [](const QString &left, const QString &right) {
+        return left.trimmed().compare(right.trimmed(), Qt::CaseInsensitive) == 0;
+    };
+
     if (query.startsWith(QLatin1Char('#'))) {
         auto tag = query;
         tag.remove(0, 1);
@@ -324,7 +328,7 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
 
         FMH::MODEL_LIST filtered;
         for (const auto &track : localTracks()) {
-            if (track[FMH::MODEL_KEY::ARTIST].compare(artist, Qt::CaseInsensitive) == 0) {
+            if (normalizedEquals(track[FMH::MODEL_KEY::ARTIST], artist)) {
                 filtered << track;
             }
         }
@@ -342,8 +346,8 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
 
             FMH::MODEL_LIST filtered;
             for (const auto &track : localTracks()) {
-                if (track[FMH::MODEL_KEY::ALBUM].compare(album, Qt::CaseInsensitive) == 0
-                    && track[FMH::MODEL_KEY::ARTIST].compare(artist, Qt::CaseInsensitive) == 0) {
+                if (normalizedEquals(track[FMH::MODEL_KEY::ALBUM], album)
+                    && normalizedEquals(track[FMH::MODEL_KEY::ARTIST], artist)) {
                     filtered << track;
                 }
             }
