@@ -9,8 +9,8 @@ class spotify : public Service
 
 private:
     inline static const QString API = "https://api.spotify.com/v1/search?q=";
-    inline static const QString CLIENT_ID = "a49552c9276745f5b4752250c2d84367";
-    inline static const QString CLIENT_SECRET = "b3f1562559f3405dbcde4a435f50089a";
+    inline static constexpr const char *CLIENT_ID_ENV = "VVAVE_SPOTIFY_CLIENT_ID";
+    inline static constexpr const char *CLIENT_SECRET_ENV = "VVAVE_SPOTIFY_CLIENT_SECRET";
 
 public:
     explicit spotify();
@@ -21,4 +21,3 @@ protected:
     virtual void parseAlbum(const QByteArray &array) override final;
     virtual void parseTrack(const QByteArray &array) override final;
 };
-

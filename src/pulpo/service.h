@@ -38,8 +38,6 @@ protected:
 
     void retrieve(const QString &url, const QMap<QString, QString> &headers = {});
 
-    static PULPO::RESPONSE packResponse(const PULPO::ONTOLOGY &ontology, const PULPO::INFO &info, const PULPO::VALUE &value);
-
     bool scopePass();
 
 Q_SIGNALS:

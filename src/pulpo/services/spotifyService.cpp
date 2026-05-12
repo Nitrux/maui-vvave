@@ -4,6 +4,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QByteArrayView>
+#include <QtGlobal>
 
 using namespace PULPO;
 
@@ -61,7 +62,14 @@ void spotify::set(const PULPO::REQUEST &request)
     }
     }
 
-    auto credentials = this->CLIENT_ID + ":" + this->CLIENT_SECRET;
+    const QString clientId = qEnvironmentVariable(CLIENT_ID_ENV);
+    const QString clientSecret = qEnvironmentVariable(CLIENT_SECRET_ENV);
+    if (clientId.isEmpty() || clientSecret.isEmpty()) {
+        qWarning() << "[spotify service] missing credentials. Set" << CLIENT_ID_ENV << "and" << CLIENT_SECRET_ENV;
+        ERROR(this->request)
+    }
+
+    auto credentials = clientId + ":" + clientSecret;
     auto auth = credentials.toLocal8Bit().toBase64();
     auto header = QByteArrayView("Basic ") + QByteArrayView(auth);
 
@@ -81,8 +89,12 @@ void spotify::set(const PULPO::REQUEST &request)
         auto response = reply->readAll();
         auto data = QJsonDocument::fromJson(response).object().toVariantMap();
         auto token = data["access_token"].toString();
+        if (token.isEmpty()) {
+            qWarning() << "[spotify service] token request returned empty access token";
+            ERROR(this->request)
+        }
 
-        qDebug() << "[spotify service]: " << url << token;
+        qDebug() << "[spotify service] authenticated request:" << url;
 
         this->retrieve(url, {{"Authorization", "Bearer " + token}});
 
@@ -166,7 +178,12 @@ void spotify::parseAlbum(const QByteArray &array)
     }
 
     if (this->request.info.contains(INFO::ARTWORK)) {
-        auto albumArt_url = items.first().toMap().value("images").toList().first().toMap().value("url").toString();
+        const auto images = items.first().toMap().value("images").toList();
+        if (images.isEmpty()) {
+            ERROR(this->request)
+        }
+
+        auto albumArt_url = images.first().toMap().value("url").toString();
         this->responses << PULPO::RESPONSE{PULPO_CONTEXT::IMAGE, albumArt_url};
     }
 
@@ -203,7 +220,12 @@ void spotify::parseTrack(const QByteArray &array)
            // get album title
     for (const auto &item : items) {
         auto album = item.toMap().value("album").toMap();
-        auto trackArtist = album.value("artists").toList().first().toMap().value("name").toString();
+        const auto artists = album.value("artists").toList();
+        if (artists.isEmpty()) {
+            continue;
+        }
+
+        auto trackArtist = artists.first().toMap().value("name").toString();
 
         if (trackArtist.contains(this->request.track[FMH::MODEL_KEY::ARTIST])) {
             if (this->request.info.contains(INFO::TAGS)) {
@@ -220,7 +242,12 @@ void spotify::parseTrack(const QByteArray &array)
             }
 
             if (this->request.info.contains(INFO::ARTWORK)) {
-                auto albumArt_url = album.value("images").toList().first().toMap().value("url").toString();
+                const auto images = album.value("images").toList();
+                if (images.isEmpty()) {
+                    continue;
+                }
+
+                auto albumArt_url = images.first().toMap().value("url").toString();
                 this->responses << PULPO::RESPONSE{PULPO_CONTEXT::IMAGE, albumArt_url};
             }
 

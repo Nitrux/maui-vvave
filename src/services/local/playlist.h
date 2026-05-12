@@ -32,7 +32,6 @@ public:
     enum RepeatMode : uint_fast8_t
     {
         NoRepeat,
-        RepeatOnce,
         Repeat
     };
     Q_ENUM(RepeatMode)
@@ -60,7 +59,6 @@ private:
 
     PlayMode m_playMode = PlayMode::Normal;
     RepeatMode m_repeatMode = RepeatMode::NoRepeat;
-    uint m_repeatFlag = 0;
 
     bool m_autoResume;
 
@@ -75,6 +73,8 @@ public Q_SLOTS:
     void clear();
 
     void save();
+    bool exportM3U(const QString &filePath);
+    bool importM3U(const QString &filePath);
     void loadLastPlaylist();
 
     void append(const QVariantMap &track);

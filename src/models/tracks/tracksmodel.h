@@ -9,6 +9,7 @@ class TracksModel : public MauiList
     Q_OBJECT
     Q_PROPERTY(QString query READ getQuery WRITE setQuery NOTIFY queryChanged)
     Q_PROPERTY(int limit READ limit WRITE setLimit NOTIFY limitChanged)
+    Q_PROPERTY(bool autoPopulate READ autoPopulate WRITE setAutoPopulate NOTIFY autoPopulateChanged)
 
 public:
     explicit TracksModel(QObject *parent = nullptr);
@@ -21,18 +22,23 @@ public:
 
     int limit() const;
     void setLimit(int limit);
+    bool autoPopulate() const;
+    void setAutoPopulate(bool autoPopulate);
 
 private:
     FMH::MODEL_LIST list;
     QString query;
     int m_limit = 99999;
-    int m_newTracks;
+    bool m_autoPopulate = true;
+    bool m_componentCompleted = false;
 
     void setList();
+    void reload(bool force = false);
 
 Q_SIGNALS:
     void queryChanged();
     void limitChanged(int limit);
+    void autoPopulateChanged(bool autoPopulate);
 
 public Q_SLOTS:
     bool append(const QVariantMap &item);
@@ -63,4 +69,3 @@ public Q_SLOTS:
 
     QStringList urls() const;
 };
-

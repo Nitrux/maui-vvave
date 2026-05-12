@@ -13,55 +13,156 @@ Maui.AltBrowser
     property alias listModel: _albumsModel
 
     readonly property string prefix : list.query === Albums.ALBUMS ? "album" : "artist"
+    readonly property string primarySortRole: prefix === "album" ? "album" : "artist"
+    readonly property string secondarySortRole: prefix === "album" ? "artist" : "album"
+    property string pendingSearchQuery: ""
 
-    readonly property int count: currentView.count
 
     signal albumCoverClicked(string album, string artist)
     signal playAll(string album, string artist)
+
+    function searchRole()
+    {
+        return prefix === "album" ? "album" : "artist"
+    }
+
+    function syncSearchRole()
+    {
+        listModel.filterRole = searchRole()
+    }
+
+    function applyPrimarySort(index)
+    {
+        listModel.sort = primarySortRole
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySecondarySort(index)
+    {
+        listModel.sort = secondarySortRole
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySearchFilter(query)
+    {
+        if (query.length === 0)
+            listModel.clearFilters()
+        else
+            listModel.filters = [query]
+    }
+
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
+
+    function artworkSourceFor(artist, album)
+    {
+        const safeArtist = encodeURIComponent(String(artist || ""))
+        const safeAlbum = encodeURIComponent(String(album || ""))
+        const payload = control.prefix === "album" ? (safeArtist + ":" + safeAlbum) : safeArtist
+        return "image://artwork/" + control.prefix + ":" + payload
+    }
 
     Maui.Controls.level : Maui.Controls.Secondary
 
     Maui.Theme.colorSet: Maui.Theme.View
     Maui.Theme.inherit: false
-    headBar.visible: listModel.list.count > 1
+    headBar.visible: listModel.list.count > 0
+    onPrefixChanged: syncSearchRole()
 
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
-    floatingHeader: true
+    floatingHeader: false
 
-    headBar.middleContent: Loader
+    headBar.leftContent: RowLayout
     {
-        id: _filterLoader
-        asynchronous: true
-        active: listModel.list.count > 1
-        visible: active
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
 
-        Layout.fillWidth: true
-        Layout.minimumWidth: 100
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
-
-        sourceComponent: Maui.SearchField
+        Label
         {
-            placeholderText: i18np("Filter", "Filter %1 albums", _albumsList.count)
-
-            KeyNavigation.up: currentView
-            KeyNavigation.down: currentView
-
-            onAccepted:
-            {
-                //                if(text.includes(","))
-                //                {
-                _albumsModel.filters = text.split(",")
-                //                }else
-                {
-                    //                    _albumsModel.filter = text
-                }
-            }
-
-            onCleared: _albumsModel.clearFilters()
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
         }
+
+        ComboBox
+        {
+            id: _primarySortCombo
+            implicitWidth: 170
+            model: prefix === "album"
+                   ? [i18n("Album Ascending"), i18n("Album Descending")]
+                   : [i18n("Artist Ascending"), i18n("Artist Descending")]
+            currentIndex: 0
+            onActivated: applyPrimarySort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _secondarySortCombo
+            implicitWidth: 170
+            model: prefix === "album"
+                   ? [i18n("Artist Ascending"), i18n("Artist Descending")]
+                   : [i18n("Album Ascending"), i18n("Album Descending")]
+            currentIndex: 0
+            onActivated: applySecondarySort(currentIndex)
+        }
+    }
+
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
+    {
+        id: _searchField
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
+        placeholderText: prefix === "album" ? i18n("Search albums") : i18n("Search artists")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
+
+        onTextChanged:
+        {
+            const query = text.trim()
+            pendingSearchQuery = query
+
+            if (query.length === 0)
+            {
+                _searchDebounceTimer.stop()
+                applySearchFilter("")
+            }
+            else
+            {
+                _searchDebounceTimer.restart()
+            }
+        }
+
+        onCleared:
+        {
+            pendingSearchQuery = ""
+            _searchDebounceTimer.stop()
+            applySearchFilter("")
+        }
+
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
+            {
+                clear()
+                event.accepted = true
+            }
+        }
+    }
+
+    Timer
+    {
+        id: _searchDebounceTimer
+        interval: 180
+        repeat: false
+        onTriggered: applySearchFilter(pendingSearchQuery)
     }
 
     viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
@@ -70,7 +171,7 @@ Maui.AltBrowser
     gridView.itemHeight: 180
     gridView.flickable.reuseItems: true
     listView.flickable.reuseItems: true
-    holder.visible: count === 0
+    holder.visible: listModel.list.count === 0
 
     property string typingQuery
 
@@ -138,14 +239,16 @@ Maui.AltBrowser
         }
     }
 
+    Component.onCompleted: syncSearchRole()
+
     listDelegate: Maui.ListBrowserDelegate
     {
         width: ListView.view.width
 
         label1.text: model.album ? model.album : model.artist
         label2.text: model.artist && model.album ? model.artist : ""
-        iconSource: "folder-music"
-        imageSource: "image://artwork/%1:".arg(control.prefix)+( control.prefix === "album" ? model.artist+":"+model.album : model.artist)
+        iconSource: control.prefix === "album" ? "" : "folder-music"
+        imageSource: artworkSourceFor(model.artist, model.album)
         maskRadius: Maui.Style.radiusV
 
         onClicked:
@@ -188,12 +291,12 @@ Maui.AltBrowser
             label1.text: model.album ? model.album : model.artist
             label2.text: model.artist && model.album ? model.artist : ""
 
-            imageSource: "image://artwork/%1:".arg(control.prefix)+( control.prefix === "album" ? model.artist+":"+model.album : model.artist)
+            imageSource: artworkSourceFor(model.artist, model.album)
 
-            iconSource: "media-album-cover"
+            iconSource: control.prefix === "album" ? "" : "view-media-artist"
 
             template.labelsVisible: settings.showTitles
-            template.alignment: Qt.AlignLeft
+            template.alignment: Qt.AlignHCenter
             template.fillMode: Image.PreserveAspectFit
 
             onClicked:
@@ -217,7 +320,7 @@ Maui.AltBrowser
             Loader
             {
                 active: !Maui.Handy.isMobile
-                asynchronous: true
+                asynchronous: false
                 parent: _template.template.iconItem
                 anchors.centerIn: parent
                 sourceComponent: ToolButton
@@ -242,9 +345,4 @@ Maui.AltBrowser
         }
     }
 
-    function getFilterField() : Item
-    {
-        return _filterLoader.item
     }
-    }
-

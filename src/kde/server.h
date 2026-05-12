@@ -1,7 +1,12 @@
 #pragma once
 #include <QObject>
+#include <QList>
+#include <QPair>
+#include <QSharedPointer>
+#include <QStringList>
+#include <QUrl>
+#include <QVector>
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
 class OrgKdeVvaveActionsInterface;
 
 namespace AppInstance
@@ -12,7 +17,6 @@ bool attachToExistingInstance(const QList<QUrl>& inputUrls, const QString& prefe
 
 bool registerService();
 }
-#endif
 
 class Server : public QObject
 {
@@ -48,4 +52,3 @@ private:
     QStringList filterFiles(const QStringList &urls);
 
 };
-

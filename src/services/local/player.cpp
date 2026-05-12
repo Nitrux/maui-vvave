@@ -1,12 +1,8 @@
 #include "player.h"
 
-#include <MauiKit4/Accounts/mauiaccounts.h>
-
 #include <MauiKit4/Audio/mediaplayer.h>
-#include <QByteArrayView>
-
-#include <QNetworkRequest>
-#include <QThread>
+#include <QFileInfo>
+#include <QProcessEnvironment>
 #include <QTime>
 
 #include "powermanagementinterface.h"
@@ -16,10 +12,6 @@ Player::Player(QObject *parent)
     , m_power(new PowerManagementInterface(this))
 
 {
-    auto vvave_preferredOutput = qgetenv("VVAVE_DEFAULT_OUTPUT");
-    if(!vvave_preferredOutput.isEmpty())
-        setPreferredOutput(QString::fromLocal8Bit(vvave_preferredOutput));
-
    connect(this, &MediaPlayer::stateChanged, [this]() {
        if (state() == MediaPlayer::Playing)
            this->m_power->setPreventSleep(true);
@@ -28,44 +20,6 @@ Player::Player(QObject *parent)
 
        Q_EMIT this->playingChanged();
    });
-}
-
-inline QNetworkRequest getOcsRequest(const QNetworkRequest &request)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    qDebug() << "FORMING THE REQUEST" << request.url();
-
-    // Read raw headers out of the provided request
-    QMap<QByteArray, QByteArray> rawHeaders;
-    const auto headerList = request.rawHeaderList();
-
-    for (const QByteArray &headerKey : headerList) {
-        rawHeaders.insert(headerKey, request.rawHeader(headerKey));
-    }
-
-    const auto account = FMH::toModel(MauiAccounts::instance()->getCurrentAccount());
-    //    const auto account = FMH::MODEL();
-
-    const QString concatenated = QString("%1:%2").arg(account[FMH::MODEL_KEY::USER], account[FMH::MODEL_KEY::PASSWORD]);
-    const QByteArray data = concatenated.toLocal8Bit().toBase64();
-    const auto headerData = QByteArrayView("Basic ") + QByteArrayView(data);
-
-    // Construct new QNetworkRequest with prepared header values
-    QNetworkRequest newRequest(request);
-
-    newRequest.setRawHeader(QString("Authorization").toLocal8Bit(), headerData);
-    newRequest.setRawHeader(QByteArrayLiteral("OCS-APIREQUEST"), QByteArrayLiteral("true"));
-    newRequest.setRawHeader(QByteArrayLiteral("Cache-Control"), QByteArrayLiteral("public"));
-    newRequest.setRawHeader(QByteArrayLiteral("Content-Description"), QByteArrayLiteral("File Transfer"));
-
-    newRequest.setHeader(QNetworkRequest::ContentTypeHeader, "audio/mpeg");
-    newRequest.setAttribute(QNetworkRequest::CacheSaveControlAttribute, true);
-    newRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
-
-    qDebug() << "headers" << newRequest.rawHeaderList() << newRequest.url();
-
-    return newRequest;
 }
 
 
@@ -85,4 +39,53 @@ QString Player::transformTime(int value)
 
 bool Player::getPlaying() const {
     return state() == MediaPlayer::Playing;
+}
+
+bool Player::isOutputLikelyAvailable(const QString &output) const
+{
+    const QString key = output.trimmed().toLower();
+    if (key.isEmpty()) {
+        return false;
+    }
+
+    const auto env = QProcessEnvironment::systemEnvironment();
+    auto runtimeDir = env.value(QStringLiteral("PIPEWIRE_RUNTIME_DIR"));
+    if (runtimeDir.isEmpty()) {
+        runtimeDir = env.value(QStringLiteral("XDG_RUNTIME_DIR"));
+    }
+    if (runtimeDir.isEmpty()) {
+        runtimeDir = env.value(QStringLiteral("USERPROFILE"));
+    }
+
+    auto existsInRuntime = [&runtimeDir](const QString &relativePath) -> bool {
+        return !runtimeDir.isEmpty() && QFileInfo::exists(runtimeDir + relativePath);
+    };
+
+    if (key == QStringLiteral("pipewire")) {
+        const auto remote = env.value(QStringLiteral("PIPEWIRE_REMOTE"), QStringLiteral("pipewire-0"));
+        return existsInRuntime(QStringLiteral("/") + remote) || existsInRuntime(QStringLiteral("/pipewire-0"));
+    }
+
+    if (key == QStringLiteral("pulse") || key == QStringLiteral("pulseaudio")) {
+        const auto pulseServer = env.value(QStringLiteral("PULSE_SERVER"));
+        if (pulseServer.startsWith(QStringLiteral("unix:"))) {
+            return QFileInfo::exists(pulseServer.mid(5));
+        }
+        return existsInRuntime(QStringLiteral("/pulse/native"));
+    }
+
+    if (key == QStringLiteral("jack")) {
+        return existsInRuntime(QStringLiteral("/jack/default/jack_0"));
+    }
+
+    if (key == QStringLiteral("alsa")) {
+        return QFileInfo::exists(QStringLiteral("/dev/snd"));
+    }
+
+    if (key == QStringLiteral("oss")) {
+        return QFileInfo::exists(QStringLiteral("/dev/dsp"));
+    }
+
+    // For unknown backends, don't hide valid plugin choices.
+    return true;
 }

@@ -29,7 +29,7 @@ msgstr "Tvarkyti muziką ir jos klausytis."
 msgid "Developer"
 msgstr "Plėtotojas"
 
-#: src/main.qml:331 src/main.qml:480 src/widgets/BabeTable/BabeTable.qml:158
+#: src/main.qml:331 src/main.qml:480 src/widgets/VVaveTable/VVaveTable.qml:158
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:61
 #: src/widgets/SelectionBar.qml:71
 #, kde-format
@@ -56,7 +56,7 @@ msgstr "Klausti prieš išeinant, jei yra atkuriama muzika"
 msgid "Save current playlist session"
 msgstr "Įrašyti dabartinio grojaraščio seansą"
 
-#: src/main.qml:473 src/widgets/BabeTable/BabeTable.qml:151
+#: src/main.qml:473 src/widgets/VVaveTable/VVaveTable.qml:151
 #, kde-format
 msgid "Remove track"
 msgid_plural "Remove %1 tracks"
@@ -72,7 +72,7 @@ msgid ""
 msgstr ""
 "Ar tikrai norite pašalinti šiuos failus? Šio veiksmo neįmanoma bus atšaukti."
 
-#: src/main.qml:490 src/widgets/BabeTable/BabeTable.qml:171
+#: src/main.qml:490 src/widgets/VVaveTable/VVaveTable.qml:171
 #: src/widgets/SleepTimerDialog.qml:154
 #, kde-format
 msgid "Cancel"
@@ -206,7 +206,7 @@ msgstr "Pridėti šaltinių"
 msgid "This list is empty"
 msgstr "Šis sąrašas yra tuščias"
 
-#: src/widgets/BabeGrid/BabeGrid.qml:47 src/widgets/BabeTable/BabeTable.qml:110
+#: src/widgets/VVaveGrid/VVaveGrid.qml:47 src/widgets/VVaveTable/VVaveTable.qml:110
 #: src/widgets/CloudView/CloudView.qml:24
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:94
 #, kde-format
@@ -217,22 +217,22 @@ msgstr[1] "Filtruoti %1 albumus"
 msgstr[2] "Filtruoti %1 albumų"
 msgstr[3] "Filtruoti %1 albumą"
 
-#: src/widgets/BabeTable/BabeTable.qml:76
+#: src/widgets/VVaveTable/VVaveTable.qml:76
 #, kde-format
 msgid "Shuffle Play"
 msgstr "Maišyti atkūrimą"
 
-#: src/widgets/BabeTable/BabeTable.qml:83 src/widgets/TracksGroup.qml:47
+#: src/widgets/VVaveTable/VVaveTable.qml:83 src/widgets/TracksGroup.qml:47
 #, kde-format
 msgid "Play All"
 msgstr "Atkurti visus"
 
-#: src/widgets/BabeTable/BabeTable.qml:90 src/widgets/TracksGroup.qml:55
+#: src/widgets/VVaveTable/VVaveTable.qml:90 src/widgets/TracksGroup.qml:55
 #, kde-format
 msgid "Append All"
 msgstr "Pridėti visus"
 
-#: src/widgets/BabeTable/BabeTable.qml:152
+#: src/widgets/VVaveTable/VVaveTable.qml:152
 #, kde-format
 msgid ""
 "Are you sure you want to delete the file from your computer? This action can "
@@ -241,64 +241,64 @@ msgstr ""
 "Ar tikrai norite ištrinti failą iš savo kompiuterio? Šio veiksmo neįmanoma "
 "bus atšaukti."
 
-#: src/widgets/BabeTable/BabeTable.qml:185 src/widgets/TracksGroup.qml:68
+#: src/widgets/VVaveTable/VVaveTable.qml:185 src/widgets/TracksGroup.qml:68
 #, kde-format
 msgid "Go to Artist"
 msgstr "Eiti į atlikėją"
 
-#: src/widgets/BabeTable/BabeTable.qml:192 src/widgets/TracksGroup.qml:75
+#: src/widgets/VVaveTable/VVaveTable.qml:192 src/widgets/TracksGroup.qml:75
 #, kde-format
 msgid "Go to Album"
 msgstr "Eiti į albumą"
 
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "Fav it"
 msgstr "Mėgstama"
 
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "UnFav it"
 msgstr "Nebemėgstama"
 
-#: src/widgets/BabeTable/TableMenu.qml:46
+#: src/widgets/VVaveTable/TableMenu.qml:46
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:53
 #, kde-format
 msgid "Edit"
 msgstr "Taisyti"
 
-#: src/widgets/BabeTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
+#: src/widgets/VVaveTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
 #: src/widgets/SelectionBar.qml:54
 #, kde-format
 msgid "Share"
 msgstr "Bendrinti"
 
-#: src/widgets/BabeTable/TableMenu.qml:66
+#: src/widgets/VVaveTable/TableMenu.qml:66
 #, kde-format
 msgid "Add to '%1'"
 msgstr "Pridėti į „%1“"
 
-#: src/widgets/BabeTable/TableMenu.qml:76
+#: src/widgets/VVaveTable/TableMenu.qml:76
 #, kde-format
 msgid "Add to playlist"
 msgstr "Pridėti į grojaraštį"
 
-#: src/widgets/BabeTable/TableMenu.qml:86
+#: src/widgets/VVaveTable/TableMenu.qml:86
 #, kde-format
 msgid "Select"
 msgstr "Žymėti"
 
-#: src/widgets/BabeTable/TableMenu.qml:99
+#: src/widgets/VVaveTable/TableMenu.qml:99
 #, kde-format
 msgid "Play Next"
 msgstr "Atkurti kitą"
 
-#: src/widgets/BabeTable/TableMenu.qml:124
+#: src/widgets/VVaveTable/TableMenu.qml:124
 #, kde-format
 msgid "Show in Folder"
 msgstr "Rodyti aplanke"
 
-#: src/widgets/BabeTable/TableMenu.qml:150
+#: src/widgets/VVaveTable/TableMenu.qml:150
 #, kde-format
 msgid "Delete"
 msgstr "Ištrinti"

@@ -2,9 +2,15 @@
 #include "../../models/tracks/tracksmodel.h"
 
 // #include <QRandomGenerator>
+#include <QDir>
 #include <QDebug>
+#include <QFile>
+#include <QFileInfo>
 #include <QSettings>
+#include <QSaveFile>
+#include <QTextStream>
 #include <QUrl>
+#include <QtGlobal>
 
 #include <random>
 
@@ -73,7 +79,16 @@ bool Playlist::canGoNext() const
         return false;
     }
 
-    return m_model->getCount() > 0;
+    const auto count = m_model->getCount();
+    if (count <= 0) {
+        return false;
+    }
+
+    if (m_repeatMode == RepeatMode::Repeat) {
+        return true;
+    }
+
+    return m_currentIndex >= 0 && m_currentIndex < (count - 1);
 }
 
 bool Playlist::canGoPrevious() const
@@ -82,7 +97,16 @@ bool Playlist::canGoPrevious() const
         return false;
     }
 
-    return m_model->getCount() > 0;
+    const auto count = m_model->getCount();
+    if (count <= 0) {
+        return false;
+    }
+
+    if (m_repeatMode == RepeatMode::Repeat) {
+        return true;
+    }
+
+    return m_currentIndex > 0 && m_currentIndex < count;
 }
 
 bool Playlist::canPlay() const
@@ -100,21 +124,15 @@ void Playlist::next()
         return;
     }
 
+    const auto count = m_model->getCount();
+    if (count <= 0 || m_currentIndex < 0) {
+        return;
+    }
+
     switch (m_repeatMode) {
     case RepeatMode::Repeat: {
         setCurrentIndex(m_currentIndex);
         return;
-    }
-
-    case RepeatMode::RepeatOnce: {
-        if (m_repeatFlag == 0) {
-            m_repeatFlag = 1;
-            setCurrentIndex(m_currentIndex);
-            return;
-        } else {
-            m_repeatFlag = 0;
-        }
-        break;
     }
     default:
     case RepeatMode::NoRepeat:
@@ -124,7 +142,12 @@ void Playlist::next()
     switch (m_playMode) {
     case PlayMode::Normal:
     case PlayMode::Shuffle: {
-        setCurrentIndex(m_currentIndex + 1 >= m_model->getCount() ? 0 : m_currentIndex + 1);
+        const int nextIndex = m_currentIndex + 1;
+        if (nextIndex >= count) {
+            return;
+        }
+
+        setCurrentIndex(nextIndex);
         break;
     }
     }
@@ -139,7 +162,14 @@ void Playlist::previous()
     if (!canGoPrevious())
         return;
 
-    int previous = m_currentIndex - 1 >= 0 ? m_currentIndex - 1 : m_model->getCount() - 1;
+    int previous = m_currentIndex - 1;
+    if (previous < 0) {
+        if (m_repeatMode == RepeatMode::Repeat) {
+            previous = m_model->getCount() - 1;
+        } else {
+            return;
+        }
+    }
 
     setCurrentIndex(previous);
 }
@@ -165,19 +195,143 @@ void Playlist::save()
         return;
     }
 
+    QSettings settings;
+    settings.beginGroup("PLAYLIST");
+
+    // Keep the config file lean: only persist queue state when auto-resume
+    // is explicitly enabled.
+    if (!m_autoResume) {
+        settings.remove("LASTPLAYLIST");
+        settings.remove("PLAYLIST_POS");
+        settings.endGroup();
+        return;
+    }
+
+    constexpr int kMaxResumeEntries = 500;
     QStringList urls;
     const auto count = m_model->getCount();
+    const int savedCount = qMin(count, kMaxResumeEntries);
+    if (savedCount <= 0) {
+        settings.remove("LASTPLAYLIST");
+        settings.setValue("PLAYLIST_POS", -1);
+        settings.endGroup();
+        return;
+    }
 
-    for (int i = 0; i < count; i++) {
+    int start = 0;
+    if (count > savedCount) {
+        const int center = qBound(0, m_currentIndex, count - 1);
+        start = qMax(0, center - (savedCount / 2));
+        if (start + savedCount > count)
+            start = count - savedCount;
+    }
+
+    urls.reserve(savedCount);
+    for (int i = start; i < start + savedCount; ++i) {
         auto url = m_model->get(i).value("url").toString();
         urls << url;
     }
 
-    QSettings settings;
-    settings.beginGroup("PLAYLIST");
+    const int savedIndex = (m_currentIndex >= start && m_currentIndex < start + savedCount)
+            ? m_currentIndex - start
+            : -1;
     settings.setValue("LASTPLAYLIST", urls);
-    settings.setValue("PLAYLIST_POS", m_currentIndex);
+    settings.setValue("PLAYLIST_POS", savedIndex);
     settings.endGroup();
+}
+
+bool Playlist::exportM3U(const QString &filePath)
+{
+    if (!m_model || filePath.trimmed().isEmpty()) {
+        return false;
+    }
+
+    const auto targetUrl = QUrl::fromUserInput(filePath);
+    const auto localPath = targetUrl.isLocalFile() ? targetUrl.toLocalFile() : filePath;
+
+    QSaveFile file(localPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Could not open playlist file for writing:" << localPath;
+        return false;
+    }
+
+    QTextStream out(&file);
+    out << "#EXTM3U\n";
+
+    for (int i = 0; i < m_model->getCount(); ++i) {
+        const auto track = m_model->get(i);
+        const auto url = track.value("url").toUrl();
+        const auto artist = track.value("artist").toString().trimmed();
+        const auto title = track.value("title").toString().trimmed();
+        const auto duration = track.value("duration").toString().toInt();
+
+        if (!artist.isEmpty() || !title.isEmpty()) {
+            const auto name = artist.isEmpty() ? title : (artist + " - " + title);
+            out << "#EXTINF:" << duration << "," << name << "\n";
+        }
+
+        out << (url.isValid() ? url.toString() : track.value("url").toString()) << "\n";
+    }
+
+    if (!file.commit()) {
+        qWarning() << "Could not finalize playlist file:" << localPath;
+        return false;
+    }
+
+    return true;
+}
+
+bool Playlist::importM3U(const QString &filePath)
+{
+    if (!m_model || filePath.trimmed().isEmpty()) {
+        return false;
+    }
+
+    const auto sourceUrl = QUrl::fromUserInput(filePath);
+    const auto localPath = sourceUrl.isLocalFile() ? sourceUrl.toLocalFile() : filePath;
+
+    QFile file(localPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Could not open playlist file for reading:" << localPath;
+        return false;
+    }
+
+    const auto baseDir = QFileInfo(localPath).absolutePath();
+    QStringList trackUrls;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        const auto line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith(QLatin1Char('#'))) {
+            continue;
+        }
+
+        QUrl trackUrl;
+        if (line.contains(QStringLiteral("://")) || line.startsWith(QStringLiteral("file:/"))) {
+            trackUrl = QUrl::fromUserInput(line);
+        } else {
+            const QFileInfo lineInfo(line);
+            const auto resolvedPath = lineInfo.isAbsolute() ? line : QDir(baseDir).filePath(line);
+            trackUrl = QUrl::fromLocalFile(QFileInfo(resolvedPath).absoluteFilePath());
+        }
+
+        if (trackUrl.isValid()) {
+            trackUrls << trackUrl.toString();
+        }
+    }
+
+    if (trackUrls.isEmpty()) {
+        return false;
+    }
+
+    m_model->clear();
+    if (!m_model->appendUrls(trackUrls)) {
+        return false;
+    }
+
+    // Keep the queue loaded without forcing playback start.
+    setCurrentIndex(-1);
+    return true;
 }
 
 void Playlist::append(const QVariantMap &track)
@@ -381,9 +535,13 @@ void Playlist::setAutoResume(bool autoResume)
 
 void Playlist::componentComplete()
 {
-    if (m_autoResume) {
-        this->loadLastPlaylist();
-    }
+    // Queue/session persistence is not automatic anymore.
+    // Persisted playlists should be explicit user actions only.
+    QSettings settings;
+    settings.beginGroup("PLAYLIST");
+    settings.remove("LASTPLAYLIST");
+    settings.remove("PLAYLIST_POS");
+    settings.endGroup();
 }
 
 void Playlist::classBegin()

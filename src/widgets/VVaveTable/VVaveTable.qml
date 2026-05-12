@@ -14,6 +14,7 @@ import "../../widgets"
 Maui.Page
 {
     id: control
+    background: null
 
     readonly property alias listBrowser : _listBrowser
     readonly property alias listView : _listBrowser.flickable
@@ -32,9 +33,14 @@ Maui.Page
 
     property bool trackNumberVisible : false
     property bool coverArtVisible : false
+    property bool collapseRepeatedAlbumArt : true
     property bool allowMenu: true
     property bool showQuickActions : true
     property bool group : false
+    property bool enforceDefaultTitleSort: false
+    property bool showGenreSort: true
+    property bool _defaultSortApplied: false
+    property string _pendingFilterQuery: ""
 
     readonly property alias contextMenu : contextMenu
     property alias contextMenuItems : contextMenu.contentData
@@ -49,7 +55,49 @@ Maui.Page
     signal appendAll()
     signal shuffleAll()
 
-    Maui.Theme.colorSet: Maui.Theme.View
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
+
+    function applyAlphabeticalSort(index)
+    {
+        listModel.sort = "title"
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applyGenreSort(index)
+    {
+        listModel.sort = "genre"
+        listModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySearchFilter(query)
+    {
+        if (query.length === 0)
+            listModel.clearFilters()
+        else
+            listModel.filters = [query]
+    }
+
+    function applyDefaultSortIfNeeded()
+    {
+        if (!enforceDefaultTitleSort || _defaultSortApplied || count <= 0)
+            return
+
+        // Force an actual resort on first population, even if bindings already
+        // hold title/ascending and would otherwise not emit changes.
+        listModel.sort = "title"
+        if (listModel.sortOrder === Qt.AscendingOrder)
+            listModel.sortOrder = Qt.DescendingOrder
+        listModel.sortOrder = Qt.AscendingOrder
+        _alphaSortCombo.currentIndex = 0
+        _genreSortCombo.currentIndex = 0
+        _defaultSortApplied = true
+    }
+
+    Maui.Theme.colorSet: Maui.Theme.Window
     Maui.Theme.inherit: false
 
     Maui.Controls.level : Maui.Controls.Secondary
@@ -60,71 +108,91 @@ Maui.Page
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
 
-    headBar.rightContent: Loader
+    onCountChanged: applyDefaultSortIfNeeded()
+
+    headBar.leftContent: RowLayout
     {
-        asynchronous: true
-        active: headBar.visible
-        visible: active
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
 
-        sourceComponent: Maui.ToolButtonMenu
+        Label
         {
-            icon.name: "media-playback-start"
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
+        }
 
-            MenuItem
+        ComboBox
+        {
+            id: _alphaSortCombo
+            implicitWidth: 170
+            model: [i18n("Title Ascending"), i18n("Title Descending")]
+            currentIndex: 0
+            onActivated: applyAlphabeticalSort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _genreSortCombo
+            visible: control.showGenreSort
+            implicitWidth: 170
+            model: [i18n("Genre Ascending"), i18n("Genre Descending")]
+            currentIndex: 0
+            onActivated: applyGenreSort(currentIndex)
+        }
+    }
+
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
+    {
+        id: _searchField
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
+        placeholderText: i18n("Search tracks")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
+
+        onTextChanged:
+        {
+            const query = text.trim()
+            control._pendingFilterQuery = query
+
+            if (query.length === 0)
             {
-                icon.name : "media-playlist-shuffle"
-                text: i18n("Shuffle Play")
-                onTriggered: shuffleAll()
+                _filterTimer.stop()
+                control.applySearchFilter("")
             }
-
-            MenuItem
+            else
             {
-                icon.name : "media-playback-start"
-                text: i18n("Play All")
-                onTriggered: playAll()
+                _filterTimer.restart()
             }
+        }
 
-            MenuItem
+        onCleared:
+        {
+            control._pendingFilterQuery = ""
+            _filterTimer.stop()
+            control.applySearchFilter("")
+        }
+
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
             {
-                icon.name : "media-playlist-append"
-                text: i18n("Append All")
-                onTriggered: appendAll()
+                clear()
+                event.accepted = true
             }
         }
     }
 
-    headBar.middleContent: Loader
+    Timer
     {
-        id: _filterLoader
-        asynchronous: true
-        active: listModel.list.count > 1
-        visible: active
-
-        Layout.fillWidth: true
-        Layout.minimumWidth: 100
-        Layout.maximumWidth: 500
-        Layout.alignment: Qt.AlignCenter
-
-        sourceComponent: Maui.SearchField
-        {
-            placeholderText: i18np("Filter", "Filter %1 songs", listModel.list.count)
-
-            KeyNavigation.up: _listBrowser
-            KeyNavigation.down: _listBrowser
-
-            onAccepted:
-            {
-                if(text.includes(","))
-                {
-                    listModel.filters = text.split(",")
-                }else
-                {
-                    listModel.filter = text
-                }
-            }
-
-            onCleared: listModel.clearFilters()
-        }
+        id: _filterTimer
+        interval: 180
+        repeat: false
+        onTriggered: control.applySearchFilter(control._pendingFilterQuery)
     }
 
     Component
@@ -178,66 +246,31 @@ Maui.Page
     {
         id: contextMenu
 
-        MenuSeparator {}
-
-        MenuItem
-        {
-            text: i18n("Go to Artist")
-            icon.name: "view-media-artist"
-            onTriggered: goToArtist(listModel.get(control.currentIndex).artist)
-        }
-
-        MenuItem
-        {
-            text: i18n("Go to Album")
-            icon.name: "view-media-album-cover"
-            onTriggered:
-            {
-                let item = listModel.get(control.currentIndex)
-                goToAlbum(item.artist, item.album)
-            }
-        }
-
-        onFavClicked:
-        {
-            listModel.list.fav(listModel.mappedToSource(contextMenu.index), !FB.Tagging.isFav(listModel.get(contextMenu.index).url))
-        }
-
         onQueueClicked: Player.queueTracks([listModel.get(contextMenu.index)])
 
-        onSaveToClicked:
+        onGoToArtistClicked: goToArtist(listModel.get(control.currentIndex).artist)
+
+        onGoToAlbumClicked:
         {
-            tagUrls(filterSelection(listModel.get(contextMenu.index).url))
+            let item = listModel.get(control.currentIndex)
+            goToAlbum(item.artist, item.album)
         }
 
-        onOpenWithClicked: FB.FM.openLocation(filterSelection(listModel.get(contextMenu.index).url))
+        onCopyPathClicked:
+        {
+            const item = listModel.get(contextMenu.index)
+            if (!item || !item.url)
+                return
+
+            const raw = String(item.url)
+            const path = raw.startsWith("file://") ? decodeURIComponent(raw.replace("file://", "")) : raw
+            Maui.Handy.copyTextToClipboard(path)
+        }
 
         onDeleteClicked:
         {
             var dialog = _removeDialogComponent.createObject(control, ({'urls' : filterSelection(listModel.get(contextMenu.index).url)}))
             dialog.open()
-        }
-
-        onInfoClicked:
-        {
-            //            infoView.show(listModel.get(control.currentIndex))
-        }
-
-        onEditClicked:
-        {
-            var dialog = _metadataDialogComponent.createObject(control, ({'index': contextMenu.index}))
-            dialog.open()
-        }
-
-        onCopyToClicked:
-        {
-            cloudView.list.upload(contextMenu.index)
-        }
-
-        onShareClicked:
-        {
-            const url = listModel.get(contextMenu.index).url
-            Maui.Platform.shareFiles([url])
         }
     }
 
@@ -245,7 +278,7 @@ Maui.Page
     {
         id: _listBrowser
         anchors.fill: parent
-        holder.visible: control.listModel.list.count === 0
+        holder.visible: control.count === 0 || control.listModel.list.count === 0
         enableLassoSelection: true
         selectionMode: root.selectionMode
         currentIndex: -1
@@ -297,7 +330,6 @@ Maui.Page
             height: Math.max(implicitHeight, Maui.Style.rowHeight)
             number: trackNumberVisible
             coverArt: coverArtVisible ? (control.width > 200) : coverArtVisible
-            appendButton: control.showQuickActions && (Maui.Handy.isTouch ? true : delegate.hovered)
 
             onPressAndHold:
             {
@@ -324,13 +356,12 @@ Maui.Page
 
             sameAlbum:
             {
-                const item = listModel.get(index-1)
-                return coverArt && item && item.album === album && item.artist === artist
-            }
+                if (!control.collapseRepeatedAlbumArt || !coverArt || index <= 0 || index >= listModel.count) {
+                    return false
+                }
 
-            onAppendClicked:{
-                currentIndex = index
-                appendTrack(index)
+                const item = listModel.get(index - 1)
+                return !!item && item.album === album && item.artist === artist
             }
 
             onClicked: (mouse) =>
@@ -398,7 +429,6 @@ Maui.Page
     {
         currentIndex = index
         contextMenu.index = index
-        contextMenu.fav = FB.Tagging.isFav(listModel.get(contextMenu.index).url)
         contextMenu.titleInfo = listModel.get(contextMenu.index)
         contextMenu.show()
         rowPressed(index)
@@ -431,8 +461,4 @@ Maui.Page
         _listBrowser.forceActiveFocus()
     }
 
-    function getFilterField() : Item
-    {
-        return _filterLoader.item
-    }
 }

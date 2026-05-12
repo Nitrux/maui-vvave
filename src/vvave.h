@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QColor>
 #include <QObject>
 #include <QStringList>
 
@@ -16,6 +17,11 @@ class vvave : public QObject
 public:
     explicit vvave(QObject *parent = nullptr);
     static vvave *instance();
+    static FMH::MODEL_LIST localTracks();
+    static FMH::MODEL_LIST albums();
+    static FMH::MODEL_LIST artists();
+    static FMH::MODEL_LIST tracksForTag(const QString &tag);
+    static FMH::MODEL_LIST tracksFromQuery(const QString &query);
 
     bool fetchArtwork() const;
 
@@ -37,22 +43,29 @@ public Q_SLOTS:
     static FMH::MODEL trackInfo(const QUrl &url);
 
     QString artworkUrl(const QString &artist, const QString &album);
+    QColor artworkAccent(const QString &artist, const QString &album);
 
     /**
-     * @brief Get the tracks resulting from looking up the DB with a given query
-     * @param query The querystring
-     * @return A list of tracks
+     * @brief Get tracks matching a lightweight query.
+     * Supported forms:
+     * - "vvave://all"
+     * - "vvave://artist/<url-encoded-artist>"
+     * - "vvave://album/<url-encoded-album>/<url-encoded-artist>"
+     * - "#<tag>"
      */
     QVariantList getTracks(const QString &query);
 
 private:
     bool m_fetchArtwork = false;
     bool m_scanning = false;
+    bool m_scanScheduled = false;
 
 Q_SIGNALS:
     void sourceAdded(QUrl source);
     void sourceRemoved(QUrl source);
 
+    void collectionChanged();
+    void scanFinished(int totalTracks, int reusedTracks, int parsedTracks, qint64 elapsedMs);
     void sourcesChanged();
     void fetchArtworkChanged(bool fetchArtwork);
     void scanningChanged(bool scanning);

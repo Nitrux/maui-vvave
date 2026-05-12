@@ -29,6 +29,93 @@ import org.maui.vvave
 Maui.SettingsDialog
 {
     id: control
+    readonly property var sleepLabels: [
+        i18n("Disabled"),
+        i18n("15 minutes"),
+        i18n("30 minutes"),
+        i18n("60 minutes"),
+        i18n("End of current track"),
+        i18n("End of playlist")
+    ]
+    readonly property var sleepValues: [
+        "none",
+        "15m",
+        "30m",
+        "60m",
+        "eot",
+        "eop"
+    ]
+    property var outputOptionValues: []
+    property var outputOptionLabels: []
+
+    function backendDisplayName(shortName)
+    {
+        const value = String(shortName || "")
+        const key = value.toLowerCase()
+
+        switch (key)
+        {
+        case "pipewire":
+            return "PipeWire"
+        case "pulse":
+        case "pulseaudio":
+            return "PulseAudio"
+        case "alsa":
+            return "ALSA"
+        case "jack":
+            return "JACK"
+        case "oss":
+            return "OSS"
+        default:
+            return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value
+        }
+    }
+
+    function refreshOutputOptions()
+    {
+        const outputs = player.outputs || []
+        const preferred = String(player.preferredOutput || "").toLowerCase()
+        const isRealtime = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "pipewire" || key === "pulse" || key === "pulseaudio" || key === "jack"
+        }
+        const isAutoSafe = (name) =>
+        {
+            const key = String(name || "").toLowerCase()
+            return key === "null" || isRealtime(key)
+        }
+
+        let filtered = outputs.filter((name) =>
+            (String(name).toLowerCase() === preferred) ||
+            (isAutoSafe(name) && player.isOutputLikelyAvailable(name)))
+
+        const nullOutput = outputs.find((name) => String(name || "").toLowerCase() === "null")
+
+        // Never expose an empty selector: if detection is inconclusive,
+        // keep the safe fallback (Null) instead of showing every backend.
+        if (filtered.length === 0) {
+            filtered = nullOutput ? [nullOutput] : outputs.filter((name) => isAutoSafe(name))
+        }
+
+        outputOptionValues = filtered
+        outputOptionLabels = filtered.map((name) => backendDisplayName(name))
+    }
+
+    function outputIndexForValue(value)
+    {
+        const target = String(value || "").toLowerCase()
+        if (target.length === 0)
+            return -1
+
+        for (let i = 0; i < outputOptionValues.length; ++i)
+        {
+            if (String(outputOptionValues[i] || "").toLowerCase() === target)
+                return i
+        }
+
+        return -1
+    }
 
     Maui.InfoDialog
     {
@@ -48,98 +135,6 @@ Maui.SettingsDialog
             confirmationDialog.close()
         }
         onRejected: confirmationDialog.close()
-    }
-
-    Maui.SectionGroup
-    {
-        title: i18n("Playback")
-//        description: i18n("Configure the playback behavior.")
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Save & Restore Session")
-            label2.text: i18n("Resume the last session playlist.")
-
-            Switch
-            {
-                checkable: true
-                checked: playlist.autoResume
-                onToggled: playlist.autoResume = !playlist.autoResume
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Volume")
-            label2.text: i18n("Show volume controls.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.volumeControl
-                onToggled: settings.volumeControl = !settings.volumeControl
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Exiting")
-            label2.text: i18n("Ask before closing if music is playing")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.askBeforeClose
-                onToggled: settings.askBeforeClose = !settings.askBeforeClose
-            }
-        }
-
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Output")
-            label2.text: i18n("Preferred output source")
-
-            ComboBox 
-            {
-                model: player.outputs
-                onActivated: player.preferredOutput = currentValue
-                // Set the initial currentIndex to the value stored in the backend.
-                Component.onCompleted: currentIndex = indexOfValue(player.preferredOutput)
-            }
-        }
-    }
-
-    Maui.SectionGroup
-    {
-        title: i18n("Collection")
-//        description: i18n("Configure the app plugins and collection behavior.")
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Fetch Artwork")
-            label2.text: i18n("Gathers album and artists artworks from online services: LastFM, Spotify, MusicBrainz, iTunes, Genius, and others.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.fetchArtwork
-                onToggled:  settings.fetchArtwork = !settings.fetchArtwork
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
-            label1.text: i18n("Auto Scan")
-            label2.text: i18n("Scan all the music sources on startup to keep your collection up to date.")
-
-            Switch
-            {
-                checkable: true
-                checked: settings.autoScan
-                onToggled: settings.autoScan = !settings.autoScan
-            }
-        }
     }
 
     Maui.SectionGroup
@@ -165,22 +160,6 @@ Maui.SettingsDialog
 
         Maui.FlexSectionItem
         {
-            label1.text: i18n("Artwork")
-            label2.text: i18n("Show the cover artwork for the tracks.")
-
-            Switch
-            {
-                Layout.fillHeight: true
-                checked: settings.showArtwork
-                onToggled:
-                {
-                    settings.showArtwork = !settings.showArtwork
-                }
-            }
-        }
-
-        Maui.FlexSectionItem
-        {
             label1.text: i18n("Titles")
             label2.text: i18n("Show the title of albums and artists in the grid view.")
 
@@ -191,6 +170,99 @@ Maui.SettingsDialog
                 onToggled:
                 {
                     settings.showTitles = !settings.showTitles
+                }
+            }
+        }
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Artwork")
+            label2.text: i18n("Show artwork and fetch missing album and artist covers from online services.")
+
+            Switch
+            {
+                checkable: true
+                checked: settings.fetchArtwork
+                onToggled: settings.fetchArtwork = !settings.fetchArtwork
+            }
+        }
+    }
+
+    Maui.SectionGroup
+    {
+        title: i18n("Playback")
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Sleep Timer")
+            label2.text: i18n("Stop playback after a selected amount of time or when the playlist finishes.")
+
+            ComboBox
+            {
+                id: _sleepOptionCombo
+                implicitWidth: 190
+                model: control.sleepLabels
+                Component.onCompleted:
+                {
+                    const index = Math.max(0, control.sleepValues.indexOf(settings.sleepOption))
+                    currentIndex = index
+                }
+
+                onActivated: setSleepTimer(control.sleepValues[currentIndex])
+            }
+        }
+
+        Maui.FlexSectionItem
+        {
+            label1.text: i18n("Audio Backend")
+            label2.text: i18n("Choose the audio output backend used for playback.")
+
+            ComboBox
+            {
+                id: _outputCombo
+                model: control.outputOptionLabels
+                enabled: model.length > 0
+                implicitWidth: 190
+
+                function syncCurrentIndex()
+                {
+                    const preferred = settings.preferredOutput.length > 0 ? settings.preferredOutput : player.preferredOutput
+                    const idx = outputIndexForValue(preferred)
+                    currentIndex = idx >= 0 ? idx : 0
+                }
+
+                Component.onCompleted:
+                {
+                    refreshOutputOptions()
+                    syncCurrentIndex()
+                }
+
+                onModelChanged: syncCurrentIndex()
+
+                onActivated:
+                {
+                    const selected = control.outputOptionValues[currentIndex]
+                    if (!selected || selected.length === 0)
+                        return
+
+                    player.preferredOutput = selected
+                    settings.preferredOutput = selected
+                    settings.preferredOutputUserSet = true
+                }
+            }
+
+            Connections
+            {
+                target: player
+
+                function onOutputsChanged()
+                {
+                    refreshOutputOptions()
+                    _outputCombo.syncCurrentIndex()
+                }
+
+                function onPreferredOutputChanged()
+                {
+                    _outputCombo.syncCurrentIndex()
                 }
             }
         }
@@ -250,12 +322,6 @@ Maui.SettingsDialog
                 }
             }
 
-            Button
-            {
-                Layout.fillWidth: true
-                text: i18n("Scan now")
-                onClicked: Vvave.rescan()
-            }
         }
     }
 

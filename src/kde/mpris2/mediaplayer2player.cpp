@@ -265,7 +265,16 @@ void MediaPlayer2Player::SetPosition(const QDBusObjectPath &trackId, qlonglong p
 
 void MediaPlayer2Player::OpenUri(const QString &uri)
 {
-    Q_UNUSED(uri);
+    if (!m_playListControler || uri.isEmpty()) {
+        return;
+    }
+
+    const auto insertAt = m_playListControler->currentIndex() >= 0 ? m_playListControler->currentIndex() + 1 : 0;
+    m_playListControler->insert(QStringList{uri}, insertAt);
+
+    if (m_playListControler->currentIndex() < 0) {
+        m_playListControler->play(0);
+    }
 }
 
 void MediaPlayer2Player::playerSourceChanged()
@@ -362,7 +371,11 @@ int MediaPlayer2Player::currentTrack() const
 void MediaPlayer2Player::setCurrentTrack(int newTrackPosition)
 {
     m_currentTrack = m_playListControler->currentTrack().value("url").toString();
-    m_currentTrackId = QDBusObjectPath(QLatin1String("/org/maui/vvave/playlist/") + QString::number(newTrackPosition)).path();
+    if (newTrackPosition < 0 || m_currentTrack.isEmpty()) {
+        m_currentTrackId = QStringLiteral("/org/maui/vvave/playlist/NoTrack");
+    } else {
+        m_currentTrackId = QStringLiteral("/org/maui/vvave/playlist/%1").arg(newTrackPosition);
+    }
 
     Q_EMIT currentTrackChanged();
 

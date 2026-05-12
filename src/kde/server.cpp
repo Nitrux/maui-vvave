@@ -6,7 +6,6 @@
 
 #include <MauiKit4/FileBrowsing/fmstatic.h>
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
 #include "vvaveinterface.h"
 #include "vvaveadaptor.h"
 
@@ -129,20 +128,16 @@ bool AppInstance::registerService()
     return true;
 }
 
-#endif
-
 
 Server::Server(QObject *parent) : QObject(parent)
   , m_qmlObject(nullptr)
 {
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
     new ActionsAdaptor(this);
     if(!QDBusConnection::sessionBus().registerObject(QStringLiteral("/Actions"), this))
     {
         qDebug() << "FAILED TO REGISTER BACKGROUND DBUS OBJECT";
         return;
     }
-#endif
 }
 
 void Server::setQmlObject(QObject *object)

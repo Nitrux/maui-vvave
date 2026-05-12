@@ -9,6 +9,7 @@ import org.maui.vvave as Vvave
 Maui.Page
 {
     id: control
+    background: null
 
     Vvave.TrackInfo
     {
@@ -27,7 +28,7 @@ Maui.Page
             Layout.fillWidth: true
             // maskRadius: Maui.Style.radiusV
 
-            label1.text: currentTrack.artist
+            label1.text: currentTrack && currentTrack.artist ? currentTrack.artist : ""
             // label1.font.pointSize: Maui.Style.fontSizes.huge
             // label1.font.bold: true
             // label1.font.weight: Font.Black
@@ -54,7 +55,7 @@ Maui.Page
             Layout.fillWidth: true
             // maskRadius: Maui.Style.radiusV
 
-            label1.text: currentTrack.album
+            label1.text: currentTrack && currentTrack.album ? currentTrack.album : ""
             // label1.font.pointSize: Maui.Style.fontSizes.huge
             // label1.font.bold: true
             // label1.font.weight: Font.Black

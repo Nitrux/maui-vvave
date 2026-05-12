@@ -6,15 +6,10 @@ import QtQuick.Layouts
 import QtQuick.Effects
 
 import org.mauikit.controls as Maui
-import org.mauikit.filebrowsing as FB
-
-import org.maui.vvave as Vvave
 
 import "../utils/Player.js" as Player
-import "../db/Queries.js" as Q
 
-import "../widgets/InfoView"
-import "BabeTable"
+import "VVaveTable"
 
 StackView
 {
@@ -25,97 +20,21 @@ StackView
 
     property alias loader: _loader
 
-    readonly property string progressTimeLabel: player.formatTime_ms(player.elapsed)
-    readonly property string durationTimeLabel: player.formatTime_ms(player.duration)
-
-    Maui.Style.adaptiveColorSchemeSource : Vvave.Vvave.artworkUrl(currentTrack.artist, currentTrack.album)
-
-    background: Rectangle
+    function artworkSourceFor(artist, album)
     {
-        color: Maui.Theme.backgroundColor
+        const artistName = String(artist || "").trim()
+        const albumName = String(album || "").trim()
 
-        Behavior on color
-        {
-            Maui.ColorTransition{}
-        }
+        if (artistName.length > 0 && albumName.length > 0)
+            return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
 
-        onColorChanged:
-        {
-            setAndroidStatusBarColor()
-        }
+        if (artistName.length > 0)
+            return "image://artwork/artist:" + encodeURIComponent(artistName)
 
-        Loader
-        {
-            anchors.fill: parent
-            active: Maui.Style.enableEffects
-            asynchronous: true
-
-            sourceComponent: Item
-            {
-                Image
-                {
-                    id: artworkBg
-                    visible: false
-                    height: parent.height *3
-                    width: parent.width *3
-                    anchors.centerIn: parent
-
-                    sourceSize.width: 400
-                    sourceSize.height: 200
-
-                    fillMode: Image.PreserveAspectCrop
-
-                    asynchronous: true
-                    cache: true
-
-                    source: "image://artwork/album:"+currentTrack.artist + ":" + currentTrack.album
-                }
-
-                MultiEffect
-                {
-                    id: fastBlur
-                    visible: GraphicsInfo.api !== GraphicsInfo.Software
-                    height: artworkBg.height
-                    width: artworkBg.width
-                    anchors.centerIn: parent
-                    blurEnabled: true
-                    source: artworkBg
-                    blur: 1.0
-                    blurMax: 64
-                    brightness: 0.4
-                    saturation: 0.2
-                }
-
-                Rectangle
-                {
-                    anchors.fill: artworkBg
-                    color: Maui.Theme.backgroundColor
-                    opacity: 0.7
-                }
-            }
-        }
+        return "qrc:/assets/cover.png"
     }
 
-    Component
-    {
-        id: _infoComponent
-
-        InfoView
-        {
-            headBar.background: null
-            headBar.leftContent: ToolButton
-            {
-                icon.name: control.depth === 2 ? "go-previous" : "go-down"
-                onClicked:
-                {
-                    if(control.depth === 2)
-                    {
-                        control.pop()
-                    }
-                }
-            }
-        }
-    }
+    background: null
 
     Loader
     {
@@ -141,107 +60,30 @@ StackView
 
         function forceActiveFocus()
         {
-            item.forceActiveFocus()
+            if(item)
+                item.forceActiveFocus()
         }
 
         sourceComponent: Maui.Page
         {
-            property alias filterField: _filterField
             Maui.Controls.showCSD: settings.focusViewDefault
             background: null
             headerContainer.margins: Maui.Style.contentMargins
             headBar.background: null
-            headBar.leftContent: Loader
+            headBar.rightContent: Loader
             {
                 asynchronous: true
                 sourceComponent: _mainMenuComponent
-            }
-
-            headBar.middleContent: Maui.TextFieldPopup
-            {
-                id: _filterField
-                placeholderText: i18n("Find")
-                Layout.alignment: Qt.AlignCenter
-                Layout.maximumWidth: 500
-                Layout.fillWidth: true
-                clip: false
-                position: ToolBar.Header
-                KeyNavigation.up: _list
-                KeyNavigation.down: _list
-                //                popup.height: Math.min(500,Math.max(_list.listBrowser.implicitHeight, 300))
-
-                Timer
-                {
-                    id: _typeTimer
-                    interval: 1700
-                    onTriggered:
-                    {
-                        if(_filterField.text.length == 0)
-                        {
-                            _list.list.clear()
-                            return;
-                        }
-
-                        _list.list.query = Q.GET.tracksWhere_.arg("t.title LIKE \"%"+_filterField.text+"%\" OR t.artist LIKE \"%"+_filterField.text+"%\" OR t.album LIKE \"%"+_filterField.text+"%\" OR t.genre LIKE \"%"+_filterField.text+"%\"")
-                    }
-                }
-
-                onTextChanged:
-                {
-                    _typeTimer.start()
-                }
-
-                onClosed: _filterField.clear()
-
-                BabeTable
-                {
-                    id: _list
-                    headBar.visible: false
-                    anchors.fill: parent
-                    coverArtVisible: settings.showArtwork
-                    clip: true
-
-                    holder.emoji: "qrc:/assets/dialog-information.svg"
-                    holder.title : i18n("No Results!")
-                    holder.body: i18n("Try with something else")
-
-                    onRowClicked: (index) =>
-                                  {
-                                      Player.quickPlay(listModel.get(index))
-                                      _filterField.close()
-                                  }
-
-                    onAppendTrack: (index) =>
-                                   {
-                                       Player.addTrack(listModel.get(index))
-                                   }
-
-                    onPlayAll:
-                    {
-                        Player.playAllModel(listModel.list)
-                        _filterField.close()
-
-                    }
-
-                    onAppendAll:
-                    {
-                        Player.appendAllModel(listModel.list)
-                        _filterField.close()
-                    }
-
-                    onQueueTrack: (index) =>
-                                  {
-                                      Player.queueTracks([listModel.get(index)], index)
-                                  }
-                }
             }
 
             Maui.Holder
             {
                 anchors.fill: parent
                 visible: mainPlaylist.table.count === 0
+                Maui.Theme.colorSet: Maui.Theme.Window
+                Maui.Theme.inherit: false
                 emoji: "qrc:/assets/view-media-track.svg"
-                title : "Nothing to play!"
+                title : i18n("Nothing to play!")
                 body: i18n("Start putting together your playlist.")
             }
 
@@ -253,6 +95,7 @@ StackView
 
                 Loader
                 {
+                    id: _artworkListLoader
                     asynchronous: true
                     active: mainPlaylist
 
@@ -261,7 +104,11 @@ StackView
                     Layout.maximumHeight: 400
                     Layout.minimumHeight: 100
 
-                    onLoaded: item.positionViewAtIndex(currentTrackIndex, ListView.Center)
+                    onLoaded:
+                    {
+                        if (item && item.syncToCurrentTrack)
+                            item.syncToCurrentTrack()
+                    }
                     sourceComponent: ListView
                     {
                         id: _listView
@@ -272,10 +119,31 @@ StackView
                         focus: true
                         interactive: true
 
+                        function syncToCurrentTrack()
+                        {
+                            const idx = root.currentTrackIndex
+                            if (idx < 0 || idx >= count)
+                                return
+
+                            if (currentIndex !== idx)
+                                currentIndex = idx
+
+                            positionViewAtIndex(idx, ListView.Center)
+                        }
+
+                        Component.onCompleted: Qt.callLater(syncToCurrentTrack)
+                        onCountChanged: Qt.callLater(syncToCurrentTrack)
+
                         Binding on currentIndex
                         {
                             value: currentTrackIndex
                             restoreMode: Binding.RestoreBindingOrValue
+                        }
+
+                        onCurrentIndexChanged:
+                        {
+                            if (currentIndex >= 0)
+                                positionViewAtIndex(currentIndex, ListView.Center)
                         }
 
                         spacing: 0
@@ -284,6 +152,20 @@ StackView
                         snapMode: ListView.SnapOneItem
                         model: mainPlaylist.listModel
                         highlightRangeMode: ListView.ApplyRange
+
+                        Connections
+                        {
+                            target: root
+                            function onCurrentTrackIndexChanged()
+                            {
+                                _listView.syncToCurrentTrack()
+                            }
+
+                            function onCurrentTrackChanged()
+                            {
+                                _listView.syncToCurrentTrack()
+                            }
+                        }
 
                         keyNavigationEnabled: true
                         keyNavigationWraps : true
@@ -307,6 +189,7 @@ StackView
 
                         delegate: ColumnLayout
                         {
+                            id: _artworkDelegate
                             height: ListView.view.height
                             width: ListView.view.width
                             spacing: Maui.Style.space.big
@@ -356,13 +239,7 @@ StackView
                                     smooth: true
                                     asynchronous: true
 
-                                    source: "image://artwork/album:"+model.artist + ":"+ model.album || "image://artwork/artist:"+model.artist
-
-                                    onStatusChanged:
-                                    {
-                                        if (status == Image.Error)
-                                            source = "qrc:/assets/cover.png";
-                                    }
+                                    source: control.artworkSourceFor(model.artist, model.album)
 
                                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                                     layer.effect: MultiEffect
@@ -428,187 +305,14 @@ StackView
                     }
                 }
 
-                Loader
-                {
-                    asynchronous: true
-                    active: settings.volumeControl
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 300
-
-                    Layout.alignment: Qt.AlignHCenter
-                    sourceComponent:  RowLayout
-                    {
-                        spacing: Maui.Style.space.small
-
-                        Maui.Icon
-                        {
-                            implicitHeight: Maui.Style.iconSizes.small
-                            implicitWidth: implicitHeight
-                            source: "audio-volume-low"
-                        }
-
-                        Slider
-                        {
-                            Layout.fillWidth: true
-                            padding: 0
-                            spacing: 0
-                            from: 1
-                            to: 100
-                            value: player.volume
-
-                            orientation: Qt.Horizontal
-
-                            onMoved:
-                            {
-                                settings.volume = value
-                            }
-                        }
-
-                        Maui.Icon
-                        {
-                            implicitHeight: Maui.Style.iconSizes.small
-                            implicitWidth: implicitHeight
-                            source: "audio-volume-high"
-                        }
-                    }
-                }
-
-                Loader
-                {
-                    asynchronous: true
-                    Layout.fillWidth: true
-                    sourceComponent: Maui.ToolBar
-                    {
-
-                        background: null
-                        middleContent: Row
-                        {
-                            Layout.alignment: Qt.AlignCenter
-                            spacing: Maui.Style.defaultSpacing
-
-                            FB.FavButton
-                            {
-                                enabled: root.currentTrack
-                                url: root.currentTrack.url
-                            }
-
-                            ToolButton
-                            {
-
-                                flat: true
-                                text: i18n("Info")
-                                display: ToolButton.IconOnly
-                                icon.name: "documentinfo"
-                                checkable: true
-                                checked: control.depth === 2
-                                onClicked:
-                                {
-                                    if(control.depth === 2)
-                                    {
-                                        control.pop()
-                                    }else
-                                    {
-                                        control.push(_infoComponent)
-                                    }
-                                }
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Mini Mode")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "window"
-                                onClicked: toggleMiniMode()
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Share")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "document-share"
-                                onClicked: Maui.Platform.shareFiles([currentTrack.url])
-                            }
-
-                            ToolButton
-                            {
-                                text: i18n("Save")
-                                display: ToolButton.IconOnly
-                                flat: true
-                                icon.name: "tag"
-                                onClicked: tagUrls([currentTrack.url])
-                            }
-                        }
-                    }
-                }
-
-                Loader
-                {
-                    asynchronous: true
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 600
-                    Layout.margins: Maui.Style.space.medium
-                    Layout.alignment: Qt.AlignCenter
-
-                    sourceComponent: ColumnLayout
-                    {
-
-                        spacing: 0
-
-                        RowLayout
-                        {
-                            Layout.fillWidth: true
-
-                            Label
-                            {
-                                visible: text.length
-                                Layout.fillWidth: true
-                                verticalAlignment: Qt.AlignVCenter
-                                horizontalAlignment: Qt.AlignLeft
-                                text: control.progressTimeLabel
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                            }
-
-                            Item
-                            {
-                                Layout.fillWidth: true
-                            }
-
-                            Label
-                            {
-                                visible: text.length
-                                Layout.fillWidth: true
-                                verticalAlignment: Qt.AlignVCenter
-                                horizontalAlignment: Qt.AlignRight
-                                text: control.durationTimeLabel
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                            }
-                        }
-
-                        Slider
-                        {
-                            Layout.fillWidth: true
-
-                            padding: 0
-                            from: 0
-                            to: 1.0
-                            value: player.position
-                            spacing: 0
-                            focus: true
-                            onMoved: player.position = value
-                        }
-                    }
-                }
             }
         }
     }
 
     function forceActiveFocus()
     {
-        control.currentItem.forceActiveFocus()
+        if(control.currentItem)
+            control.currentItem.forceActiveFocus()
     }
 
     Component.onCompleted:
@@ -616,8 +320,4 @@ StackView
         forceActiveFocus()
     }
 
-    function getFilterField() : Item
-    {
-        return control.loader.item.filterField
-    }
 }

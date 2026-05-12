@@ -6,13 +6,14 @@ import QtQuick.Controls
 import QtQuick.Effects
 
 import org.mauikit.controls as Maui
+import org.mauikit.filebrowsing as FB
 
 import org.maui.vvave as Vvave
 
 import "../../utils/Player.js" as Player
 import "../../db/Queries.js" as Q
 
-import "../BabeTable"
+import "../VVaveTable"
 
 Maui.Page
 {
@@ -23,30 +24,37 @@ Maui.Page
     property alias listModel: table.listModel
     readonly property alias listView : table.listView
     readonly property alias table: table
+    property bool collapseRepeatedAlbumArt: false
 
     readonly property alias contextMenu: table.contextMenu
 
     headBar.visible: false
 
-    background: Rectangle
+    background: null
+
+    Component
     {
-        color: Maui.Theme.alternateBackgroundColor
-        radius: Maui.Style.radiusV
+        id: _fileDialogComponent
+        FB.FileDialog {onClosed: destroy()}
     }
 
-    BabeTable
+    VVaveTable
     {
         id: table
         clip: true
         anchors.fill: parent
-        footBar.visible: !mainlistEmpty
+        list.autoPopulate: false
+        footBar.visible: true
         footerMargins: Maui.Style.defaultPadding
         background: null
         footBar.rightContent:[
 
             ToolButton
             {
-                icon.name: "edit-delete"
+                icon.name: "edit-clear"
+                enabled: !mainlistEmpty
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Clear playlist")
                 onClicked:
                 {
                     player.stop()
@@ -78,18 +86,41 @@ Maui.Page
         footBar.leftContent: [
             ToolButton
             {
-                icon.name: "document-save"
-                onClicked: saveList()
+                icon.name: "document-open"
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Open playlist from file")
+                onClicked: openList()
             },
 
             ToolButton
             {
+                icon.name: "document-save"
+                enabled: !mainlistEmpty
+                ToolTip.visible: hovered
+                ToolTip.text: i18n("Save playlist to file")
+                onClicked: saveList()
+            },
+
+            ToolSeparator 
+            {
+                topPadding: 10
+                bottomPadding: 10
+            },
+
+            ToolButton
+            {
+                enabled: !mainlistEmpty
                 icon.name: switch(playlist.repeatMode)
                            {
                            case Vvave.Playlist.NoRepeat: return "media-repeat-none"
-                           case Vvave.Playlist.RepeatOnce: return "media-playlist-repeat-song"
                            case Vvave.Playlist.Repeat: return "media-playlist-repeat"
                            }
+                ToolTip.visible: hovered
+                ToolTip.text: switch(playlist.repeatMode)
+                              {
+                              case Vvave.Playlist.NoRepeat: return i18n("Repeat: Off")
+                              case Vvave.Playlist.Repeat: return i18n("Repeat: All")
+                              }
                 onClicked:
                 {
                     switch(playlist.repeatMode)
@@ -99,10 +130,6 @@ Maui.Page
                         break
 
                     case Vvave.Playlist.Repeat:
-                        playlist.repeatMode = Vvave.Playlist.RepeatOnce
-                        break
-
-                    case Vvave.Playlist.RepeatOnce:
                         playlist.repeatMode = Vvave.Playlist.NoRepeat
                         break
                     }
@@ -111,12 +138,15 @@ Maui.Page
 
             ToolButton
             {
+                enabled: !mainlistEmpty
                 checked:  playlist.playMode === Vvave.Playlist.Shuffle
                 icon.name: switch(playlist.playMode)
                            {
                            case Vvave.Playlist.Normal: return "media-playlist-normal"
                            case Vvave.Playlist.Shuffle: return "media-playlist-shuffle"
                            }
+                ToolTip.visible: hovered
+                ToolTip.text: checked ? i18n("Playback mode: Shuffle") : i18n("Playback mode: Normal")
 
                 onClicked:
                 {
@@ -144,77 +174,15 @@ Maui.Page
         headBar.visible: false
         Maui.Theme.colorSet: Maui.Theme.Window
 
-        holder.emoji: "qrc:/assets/view-media-track.svg"
-        holder.title : "Nothing to play!"
-        holder.body: i18n("Start putting together your playlist.")
+        holder.visible: listModel.list.count === 0
+        holder.label1.width: Math.min(width - (Maui.Style.space.big * 2), Maui.Style.units.gridUnit * 12)
+        holder.label2.width: holder.label1.width
+        holder.emoji: "media-playlist-append"
+        holder.title : i18n("Playlist is Empty")
+        holder.body: i18n("Play videos from your library to build a playlist.")
         listView.header: Column
         {
             width: parent.width
-
-            Loader
-            {
-                width: visible ? parent.width : 0
-                height: width
-
-                asynchronous: true
-                active: !focusView && control.height > control.width*3 && currentTrackIndex >= 0
-                visible: active && !mainlistEmpty
-                sourceComponent: Item
-                {
-                    scale: _mouseArea.pressed ? 0.9 :  1
-
-                    Behavior on scale
-                    {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                    }
-
-                    Maui.GalleryRollTemplate
-                    {
-                        anchors.fill: parent
-                        anchors.bottomMargin: Maui.Style.space.medium
-                        radius: Maui.Style.radiusV
-                        interactive: true
-                        fillMode: Image.PreserveAspectCrop
-
-                        images: ["image://artwork/album:"+currentTrack.artist + ":"+ currentTrack.album, "image://artwork/artist:"+currentTrack.artist]
-                    }
-
-                    MouseArea
-                    {
-                        id:_mouseArea
-                        anchors.fill: parent
-                        onDoubleClicked: toggleMiniMode()
-                        hoverEnabled: true
-
-                        Rectangle
-                        {
-                            anchors.fill: parent
-                            color: Maui.Theme.backgroundColor
-                            visible: parent.containsMouse
-                            opacity: parent.pressed ? 0.8 : 0.6
-                        }
-
-                        Maui.Icon
-                        {
-                            visible: parent.containsMouse
-
-                            source: "window"
-                            color: Maui.Theme.textColor
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.margins: Maui.Style.space.medium
-                        }
-                    }
-                }
-
-                OpacityAnimator on opacity
-                {
-                    from: 0
-                    to: 1
-                    duration: Maui.Style.units.longDuration
-                    running: parent.status === Loader.Ready
-                }
-            }
 
             Rectangle
             {
@@ -259,7 +227,6 @@ Maui.Page
 
             width: ListView.view.width
             height: Math.max(implicitHeight, Maui.Style.rowHeight)
-            appendButton: false
 
             property int mindex : index
 
@@ -268,7 +235,7 @@ Maui.Page
             Drag.source: delegate
 
             number : false
-            coverArt : settings.showArtwork
+            coverArt : settings.fetchArtwork
             draggable: true
             checkable: false
             checked: false
@@ -283,11 +250,15 @@ Maui.Page
                     table.openItemMenu(index)
             }
 
-            sameAlbum: control.totalMoves, evaluate(listModel.get(mindex-1))
+            sameAlbum: control.totalMoves, evaluate()
 
-            function evaluate(item)
+            function evaluate()
             {
-                return coverArt && item && item.album === model.album && item.artist === model.artist
+                if (!control.collapseRepeatedAlbumArt || !coverArt || mindex <= 0 || mindex >= listModel.count)
+                    return false
+
+                const item = listModel.get(mindex - 1)
+                return !!item && item.album === model.album && item.artist === model.artist
             }
 
                 Item
@@ -358,12 +329,8 @@ Maui.Page
 
                 onContentDropped: (drop) =>
                                   {
-                                      console.log("Move or insert ", drop.source.mindex)
                                       if(typeof drop.source.mindex !== 'undefined')
                                       {
-                                          console.log("Move ", drop.source.mindex,
-                                                      delegate.mindex)
-
                                           root.playlistManager.move(drop.source.mindex, delegate.mindex)
 
                                       }else
@@ -378,12 +345,70 @@ Maui.Page
 
         property int totalMoves: 0
 
+        function sanitizedToastPath(path)
+        {
+            const rawPath = String(path || "")
+            const localPath = rawPath.startsWith("file://") ? rawPath.slice(7) : rawPath
+
+            try {
+                return decodeURIComponent(localPath)
+            } catch (error) {
+                return localPath
+            }
+        }
+
+        function openList()
+        {
+            const props = ({
+                               'mode': FB.FileDialog.Modes.OpenFiles,
+                               'singleSelection': true,
+                               'currentPath': FB.FM.homePath(),
+                               'nameFilters': ["Playlists (*.m3u *.m3u8 *.pls)", "All files (*)"],
+                               'callback': function(paths)
+                               {
+                                   if (!paths || paths.length === 0)
+                                       return
+
+                                   player.stop()
+                                   const ok = playlist.importM3U(paths[0])
+                                   const toastPath = sanitizedToastPath(paths[0])
+                                   if (ok)
+                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist loaded"), toastPath)
+                                   else
+                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not open playlist"), toastPath)
+                               }
+                           })
+
+            const dialog = _fileDialogComponent.createObject(root, props)
+            dialog.open()
+        }
+
         function saveList()
         {
-            let trackList = listModel.list.urls()
-            if(listModel.list.count > 0)
-            {
-                tagUrls(trackList)
-            }
+            if (listModel.list.count <= 0)
+                return
+
+            const suggested = "VVave Playlist " + Qt.formatDateTime(new Date(), "yyyy-MM-dd hh-mm-ss") + ".m3u"
+            const props = ({
+                               'mode': FB.FileDialog.Modes.Save,
+                               'singleSelection': true,
+                               'currentPath': FB.FM.homePath(),
+                               'suggestedFileName': suggested,
+                               'callback': function(paths)
+                               {
+                                   if (!paths || paths.length === 0)
+                                       return
+
+                                   const ok = playlist.exportM3U(paths[0])
+                                   const toastPath = sanitizedToastPath(paths[0])
+                                   if (ok)
+                                       Maui.App.rootComponent.notify("dialog-information", i18n("Playlist saved"), toastPath)
+                                   else
+                                       Maui.App.rootComponent.notify("dialog-error", i18n("Could not save playlist"), toastPath)
+                               }
+                           })
+
+            const dialog = _fileDialogComponent.createObject(root, props)
+            dialog.open()
         }
     }

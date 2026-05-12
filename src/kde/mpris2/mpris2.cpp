@@ -10,17 +10,11 @@
 #include "../../services/local/player.h"
 #include "../../services/local/playlist.h"
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
 #include "mediaplayer2.h"
 #include "mediaplayer2player.h"
 #include <QDBusConnection>
-#endif
 
-#if defined Q_OS_WIN
-#include <Windows.h>
-#else
 #include <unistd.h>
-#endif
 
 Mpris2::Mpris2(QObject *parent)
     : QObject(parent)
@@ -29,7 +23,6 @@ Mpris2::Mpris2(QObject *parent)
 
 void Mpris2::initDBusService()
 {
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
 
     QString mspris2Name(QStringLiteral("org.mpris.MediaPlayer2.") + m_playerName);
 
@@ -39,11 +32,7 @@ void Mpris2::initDBusService()
     // or the name is already taken. In that event the MPRIS2 spec wants the
     // following:
     if (!success) {
-#if defined Q_OS_WIN
-        success = QDBusConnection::sessionBus().registerService(mspris2Name + QLatin1String(".instance") + QString::number(GetCurrentProcessId()));
-#else
         success = QDBusConnection::sessionBus().registerService(mspris2Name + QLatin1String(".instance") + QString::number(getpid()));
-#endif
     }
 
     if (success) {
@@ -54,7 +43,6 @@ void Mpris2::initDBusService()
 
         connect(m_mp2.get(), &MediaPlayer2::raisePlayer, this, &Mpris2::raisePlayer);
     }
-#endif
 }
 
 Mpris2::~Mpris2() = default;
@@ -87,13 +75,11 @@ void Mpris2::setPlayerName(const QString &playerName)
 
     m_playerName = playerName;
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
-    if (m_playListModel && m_audioPlayer && m_audioPlayer && !m_playerName.isEmpty()) {
+    if (m_playListModel && m_audioPlayer && !m_playerName.isEmpty()) {
         if (!m_mp2) {
             initDBusService();
         }
     }
-#endif
 
     Q_EMIT playerNameChanged();
 }
@@ -106,14 +92,11 @@ void Mpris2::setPlayListModel(Playlist *playListModel)
 
     m_playListModel = playListModel;
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
-
-    if (m_playListModel && m_audioPlayer && m_audioPlayer && !m_playerName.isEmpty()) {
+    if (m_playListModel && m_audioPlayer && !m_playerName.isEmpty()) {
         if (!m_mp2) {
             initDBusService();
         }
     }
-#endif
     Q_EMIT playListModelChanged();
 }
 
@@ -123,26 +106,21 @@ void Mpris2::setAudioPlayer(Player *audioPlayer)
         return;
 
     m_audioPlayer = audioPlayer;
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
-
-    if (m_playListModel && m_audioPlayer && m_audioPlayer && !m_playerName.isEmpty()) {
+    if (m_playListModel && m_audioPlayer && !m_playerName.isEmpty()) {
         if (!m_mp2) {
             initDBusService();
         }
     }
-#endif
     Q_EMIT audioPlayerChanged();
 }
 
 void Mpris2::setShowProgressOnTaskBar(bool value)
 {
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
-    m_mp2p->setShowProgressOnTaskBar(value);
+    if (m_mp2p) {
+        m_mp2p->setShowProgressOnTaskBar(value);
+    }
     mShowProgressOnTaskBar = value;
     Q_EMIT showProgressOnTaskBarChanged();
-#else
-   Q_UNUSED(value)
-#endif
 }
 
 #include "moc_mpris2.cpp"

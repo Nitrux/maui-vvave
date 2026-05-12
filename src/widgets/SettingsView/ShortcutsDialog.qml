@@ -1,109 +1,98 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 
 import org.mauikit.controls as Maui
 
-import org.maui.vvave
-
-Maui.PopupPage
+Maui.SettingsDialog
 {
     id: control
-    title: i18n("Shortcuts")
-    persistent: false
-    page.showTitle: false
-    headBar.visible: false
-    scrollView.padding: 0
 
-    maxHeight: 500 // Copied from Nota. I don't like hardcoded layout, though.
-    maxWidth: 350
+    Maui.Controls.title: i18n("Shortcuts")
 
-    Component
+    property var shortcutGroups: []
+
+    function parseShortcutKeys(shortcut)
     {
-        id: _shortcutCategoryComponent
-        Maui.SectionGroup
+        return shortcut.nativeText
+        .split("+")
+        .map((key) => key === "" ? "+" : key)
+    }
+
+    function buildShortcutGroups()
+    {
+        const orderedCategories = []
+        const grouped = {}
+
+        for (let i = 0; i < shortcuts.length; ++i)
         {
-            title: i18n("Unknown")
-            function setTitle(rawtext: string)
-            {
-                this.title = i18n(rawtext)
+            const sc = shortcuts[i]
+            if (!(sc.dialogCategory in grouped)) {
+                grouped[sc.dialogCategory] = []
+                orderedCategories.push(sc.dialogCategory)
             }
+
+            grouped[sc.dialogCategory].push({
+                label: sc.dialogLabel,
+                keys: parseShortcutKeys(sc)
+            })
         }
+
+        const result = []
+        for (const category of orderedCategories) {
+            result.push({
+                title: category,
+                rows: grouped[category]
+            })
+        }
+
+        shortcutGroups = result
     }
 
-    Component
+    Repeater
     {
-        id: _shortcutLabelComponent
-        Maui.FlexSectionItem
+        model: control.shortcutGroups
+
+        delegate: Maui.SectionGroup
         {
-            label1.text: i18n("Unknown")
+            title: i18n(modelData.title)
 
-            Maui.ToolActions
+            Repeater
             {
-                id: _actions
-                checkable: false
-                autoExclusive: false
-            }
+                model: modelData.rows
 
-            function setText(rawtext: string)
-            {
-                this.label1.text = i18n(rawtext)
-            }
-
-            function addKeys(keynames)
-            {
-                for (let name of keynames) {
-                    _actions.actions.push(
-                        _shortcutComboComponent.createObject(
-                            _actions,
-                            {text: name} // (Probably no `i18n`?)
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    Component
-    {
-        id: _shortcutComboComponent
-        Action {}
-    }
-
-    Component.onCompleted: {
-        let categories = []
-                let category_shortcuts = {}
-                for (let i = 0; i < shortcuts.length; i++)
+                delegate: Maui.FlexSectionItem
                 {
-                    let sc = shortcuts[i]
-                    if (!(sc.dialogCategory in category_shortcuts)) {
-                        categories.push(sc.dialogCategory)
-                        category_shortcuts[sc.dialogCategory] = []
+                    label1.text: i18n(modelData.label)
+
+                    Maui.ToolActions
+                    {
+                        id: _actions
+                        checkable: false
+                        autoExclusive: false
                     }
-                    var cat = category_shortcuts[sc.dialogCategory]
 
-                    var combo = sc.nativeText.split("+").map((key) => key == "" ? "+" : key).join("\n").replace('/\+\n\+/g', "+").split("\n")
-                    cat.push({
-                        label: sc.dialogLabel,
-                        // combo: sc.nativeText.split(/(?<=[^\+])\+|\+(?=[^\+])/)
-                        combo: combo
-                        // Split on "+" but try to handle shortcuts that include a literal [+] key.
-                        // QML doesn't like lookbehinds, so we get this chain.
-                    })
-                }
+                    Component
+                    {
+                        id: _shortcutActionComponent
+                        Action {}
+                    }
 
-                for (let category of categories) {
-                    let section = _shortcutCategoryComponent.createObject(control)
-                    console.log("Trying ot push to scollable")
-                    scrollable.push(section)
-                    section.setTitle(category)
-                    for (let shortcut of category_shortcuts[category]) {
-                        let label = _shortcutLabelComponent.createObject(section)
-                        section.content.push(label)
-                        label.setText(shortcut.label)
-                        label.addKeys(shortcut.combo)
+                    Component.onCompleted:
+                    {
+                        for (let i = 0; i < modelData.keys.length; ++i)
+                        {
+                            _actions.actions.push(
+                                _shortcutActionComponent.createObject(
+                                    _actions,
+                                    { text: modelData.keys[i] }
+                                )
+                            )
+                        }
                     }
                 }
-
+            }
+        }
     }
+
+    Component.onCompleted: buildShortcutGroups()
 }

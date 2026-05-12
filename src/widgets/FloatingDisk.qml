@@ -160,7 +160,10 @@ Loader
             {
                 id: _img
                 anchors.fill: parent
-                source: "image://artwork/album:"+currentTrack.artist + ":"+ currentTrack.album
+                source: "image://artwork/album:"
+                        + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                        + ":"
+                        + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : "")
                 // verticalAlignment:  Image.AlignTop
                 // fillMode: Image.PreserveAspectFit
 
@@ -185,7 +188,7 @@ Loader
                 Maui.Icon
                 {
                     anchors.centerIn: parent
-                    source: "quickview"
+                    source: "view-media-album-cover"
                     height: 48
                     width: 48
                 }
@@ -215,4 +218,3 @@ Loader
         }
     }
 }
-

@@ -3,28 +3,15 @@
 #include <QDebug>
 #include <QCommandLineParser>
 #include <QIcon>
+#include <QApplication>
+#include <QSurfaceFormat>
+#include <QDate>
+#include <QGuiApplication>
 
 #include <KLocalizedString>
 
-#if defined Q_OS_ANDROID || defined Q_OS_IOS
-#include <QGuiApplication>
-#else
-#include <QApplication>
-#endif
-
 #include "kde/mpris2/mpris2.h"
-
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
 #include "kde/mpris2/mediaplayer2player.h"
-#endif
-
-#ifdef Q_OS_ANDROID
-#include <MauiKit4/Core/mauiandroid.h>
-#endif
-
-#ifdef Q_OS_MACOS
-#include <MauiKit4/Core/mauimacos.h>
-#endif
 
 #include <MauiKit4/FileBrowsing/fmstatic.h>
 #include <MauiKit4/Core/mauiapp.h>
@@ -46,7 +33,6 @@
 #include "models/albums/albumsmodel.h"
 #include "models/playlists/playlistsmodel.h"
 #include "models/tracks/tracksmodel.h"
-#include "models/folders/foldersmodel.h"
 
 #include "kde/server.h"
 
@@ -56,39 +42,37 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 {
     qDebug() << "APP LOADING SPEED TESTS" << 0;
 
-#ifdef Q_OS_WIN32
-    qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "w");
-#endif
+    QSurfaceFormat format;
+    format.setAlphaBufferSize(8);
+    QSurfaceFormat::setDefaultFormat(format);
 
-#if defined Q_OS_ANDROID || defined Q_OS_IOS
-    QGuiApplication app(argc, argv);
-#else
     QApplication app(argc, argv);
-#endif
 
     qDebug() << "APP LOADING SPEED TESTS" << 2;
 
     app.setOrganizationName(QStringLiteral("Maui"));
-    app.setWindowIcon(QIcon(":/assets/vvave.png"));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("maui-vvave"), QIcon(QStringLiteral(":/assets/vvave.png"))));
+    QGuiApplication::setDesktopFileName(QStringLiteral("org.maui.vvave"));
 
     KLocalizedString::setApplicationDomain("vvave");
     KAboutData about(QStringLiteral("vvave"),
-                     QStringLiteral("Vvave"),
+                     i18n("Vvave"),
                      VVAVE_VERSION_STRING,
                      i18n("Organize and listen to your music."),
                      KAboutLicense::LGPL_V3,
-                     APP_COPYRIGHT_NOTICE,
+                     i18n("© %1 Made by Nitrux | Built with MauiKit", QString::number(QDate::currentDate().year())),
                      QString(GIT_BRANCH) + "/" + QString(GIT_COMMIT_HASH));
 
     about.addAuthor("Camilo Higuita", i18n("Developer"), QStringLiteral("milo.h@aol.com"));
     about.addAuthor("Will Chen", i18n("Developer"), QStringLiteral("intralexical@gmail.com"));
+    about.addAuthor(QStringLiteral("Uri Herrera"), i18n("Developer"), QStringLiteral("uri_herrera@nxos.org"));
 
-    about.setHomepage("https://mauikit.org");
-    about.setProductName("maui/vvave");
+    about.setHomepage("https://nxos.org");
+    about.setProductName("nitrux/vvave");
     about.setBugAddress("https://invent.kde.org/maui/vvave/-/issues");
     about.setOrganizationDomain(VVAVE_URI);
     about.setProgramLogo(app.windowIcon());
-    about.setDesktopFileName("org.kde.vvave");
+    about.setDesktopFileName("org.maui.vvave");
 
     about.addComponent("TagLib",
                        "",
@@ -121,26 +105,18 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
             paths << QUrl::fromUserInput(path).toString();
     }
 
-#ifdef Q_OS_ANDROID
-    if (!MAUIAndroid::checkRunTimePermissions({"android.permission.MANAGE_EXTERNAL_STORAGE",
-                                               "android.permission.WRITE_EXTERNAL_STORAGE"}))
-        qWarning() << "Failed to get WRITE and READ permissions";
-#endif
-
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
     if (AppInstance::attachToExistingInstance(QUrl::fromStringList(paths)))
     {
-        // Successfully attached to existing instance of Nota
+        // Successfully attached to an existing Vvave instance.
         return 0;
     }
 
     AppInstance::registerService();
-#endif
 
     auto server =  std::make_unique<Server>();
 
     QQmlApplicationEngine engine;
-    const QUrl url(QStringLiteral("qrc:/app/maui/vvave/main.qml"));
+    const QUrl url(QStringLiteral("qrc:/qt/qml/app/maui/vvave/main.qml"));
 
     qDebug() << "APP LOADING SPEED TESTS" << 3;
 
@@ -163,8 +139,6 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     qmlRegisterType<TracksModel>(VVAVE_URI, 1, 0, "Tracks");
     qmlRegisterType<AlbumsModel>(VVAVE_URI, 1, 0, "Albums");
-    qmlRegisterType<FoldersModel>(VVAVE_URI, 1, 0, "Folders");
-
     qmlRegisterType<Player>(VVAVE_URI, 1, 0, "Player");
     qmlRegisterType<Playlist>(VVAVE_URI, 1, 0, "Playlist");
     qmlRegisterType<Mpris2>(VVAVE_URI, 1, 0, "Mpris2");
@@ -176,19 +150,13 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     engine.addImageProvider("artwork", new ArtworkProvider());
 
-#if (defined Q_OS_LINUX || defined Q_OS_FREEBSD) && !defined Q_OS_ANDROID
     qRegisterMetaType<MediaPlayer2Player *>();
-#endif
 
     qDebug() << "APP LOADING SPEED TESTS" << 4;
 
     engine.load(url);
 
     qDebug() << "APP LOADING SPEED TESTS" << 5;
-
-#ifdef Q_OS_MACOS
-    //	MAUIMacOS::removeTitlebarFromWindow();
-#endif
 
     return app.exec();
 }

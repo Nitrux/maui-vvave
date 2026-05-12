@@ -8,8 +8,28 @@ import org.maui.vvave as Vvave
 Maui.AltBrowser
 {
     id: control
+    background: null
 
-    readonly property alias list: _playlistsList
+    property string currentTag: ""
+    readonly property alias list: _tagsList
+
+    function applyPrimarySort(index)
+    {
+        _tagsModel.sort = "playlist"
+        _tagsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function applySecondarySort(index)
+    {
+        _tagsModel.sort = "key"
+        _tagsModel.sortOrder = index === 0 ? Qt.AscendingOrder : Qt.DescendingOrder
+    }
+
+    function focusSearch()
+    {
+        if (headBar.visible)
+            _searchField.forceActiveFocus()
+    }
 
     Maui.Theme.colorSet: Maui.Theme.View
     Maui.Theme.inherit: false
@@ -20,11 +40,11 @@ Maui.AltBrowser
     gridView.itemSize: 140
     gridView.itemHeight: 180
 
-    holder.emoji:  "qrc:/assets/dialog-information.svg"
-    holder.title : i18n("No Playlists!")
-    holder.body: i18n("Start creating new custom playlists")
+    holder.emoji: "folder-music"
+    holder.title : i18n("No Tags!")
+    holder.body: i18n("Start creating new tags")
 
-    holder.visible: count === 0
+    holder.visible: _tagsModel.count === 0
 
     Component
     {
@@ -32,11 +52,11 @@ Maui.AltBrowser
         Maui.InfoDialog
         {
             onClosed: destroy()
-            title: i18n("Remove '%1'?", currentPlaylist)
+            title: i18n("Remove '%1'?", currentTag)
             message: i18n("Are you sure you want to remove this tag? This operation can not be undone.")
             onAccepted:
             {
-                _playlistsList.removePlaylist(control.model.mappedToSource(control.currentIndex))
+                _tagsList.removePlaylist(control.model.mappedToSource(control.currentIndex))
                 close()
             }
 
@@ -70,12 +90,13 @@ Maui.AltBrowser
 
     model: Maui.BaseModel
     {
-        id: _playlistsModel
+        id: _tagsModel
         list: Vvave.Playlists
         {
-            id: _playlistsList
+            id: _tagsList
         }
 
+        filterRole: "playlist"
         recursiveFilteringEnabled: true
         sortCaseSensitivity: Qt.CaseInsensitive
         filterCaseSensitivity: Qt.CaseInsensitive
@@ -84,28 +105,78 @@ Maui.AltBrowser
     footBar.visible: false
     headerContainer.margins: Maui.Style.contentMargins
     headerContainer.topMargin: 0
+    headBar.visible: _tagsModel.count > 0
 
-    headBar.middleContent: Maui.SearchField
+    headBar.leftContent: RowLayout
     {
-        id: _filterField
-        Layout.maximumWidth: 500
-        Layout.fillWidth: true
-        Layout.alignment: Qt.AlignCenter
-        placeholderText: i18np("Filter", "Filter %1 tags", control.count)
+        spacing: Maui.Style.space.small
+        enabled: headBar.visible
 
-        KeyNavigation.up: currentView
-        KeyNavigation.down: currentView
+        Label
+        {
+            text: i18n("Filter")
+            font.weight: Font.DemiBold
+            verticalAlignment: Text.AlignVCenter
+        }
 
-        onAccepted: _playlistsModel.filter = text
-        onCleared: _playlistsModel.filter = ""
+        ComboBox
+        {
+            id: _primarySortCombo
+            implicitWidth: 170
+            model: [i18n("Tag Ascending"), i18n("Tag Descending")]
+            currentIndex: 0
+            onActivated: applyPrimarySort(currentIndex)
+        }
+
+        ComboBox
+        {
+            id: _secondarySortCombo
+            implicitWidth: 170
+            model: [i18n("Identifier Ascending"), i18n("Identifier Descending")]
+            currentIndex: 0
+            onActivated: applySecondarySort(currentIndex)
+        }
     }
 
-    headBar.rightContent: ToolButton
+    headBar.middleContent: Item {}
+
+    headBar.rightContent: Maui.SearchField
+    {
+        id: _searchField
+        Layout.preferredWidth: 320
+        Layout.maximumWidth: 360
+        Layout.alignment: Qt.AlignRight
+        placeholderText: i18n("Search tags")
+        inputMethodHints: Qt.ImhNoAutoUppercase
+        enabled: headBar.visible
+
+        onTextChanged:
+        {
+            const query = text.trim()
+            if (query.length === 0)
+                _tagsModel.clearFilters()
+            else
+                _tagsModel.filters = [query]
+        }
+
+        onCleared: _tagsModel.clearFilters()
+
+        Keys.onPressed: (event) =>
+        {
+            if (event.key === Qt.Key_Escape && text.length > 0)
+            {
+                clear()
+                event.accepted = true
+            }
+        }
+    }
+
+    headBar.farRightContent: ToolButton
     {
         icon.name: "list-add"
         onClicked:
         {
-           var dialog = newPlaylistDialogComponent.createObject(control)
+           var dialog = newTagDialogComponent.createObject(control)
             dialog.open()
         }
     }
@@ -155,7 +226,7 @@ Maui.AltBrowser
         function tryOpenContextMenu()
         {
             control.currentIndex = index
-            currentPlaylist = model.key
+            currentTag = model.key
             _tagMenu.show()
         }
     }
@@ -208,13 +279,9 @@ Maui.AltBrowser
         function tryOpenContextMenu()
         {
             control.currentIndex = index
-            currentPlaylist = model.key
+            currentTag = model.key
             _tagMenu.show()
         }
     }
 
-    function getFilterField() : Item
-    {
-        return _filterField
-    }
 }

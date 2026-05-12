@@ -26,8 +26,6 @@ public:
 
 private:
     void start();
-    QList<SERVICES> services = {};
-
     PULPO::REQUEST req;
 
     void passSignal(const REQUEST &request, const RESPONSES &responses);

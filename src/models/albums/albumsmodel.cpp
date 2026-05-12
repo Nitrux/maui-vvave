@@ -1,14 +1,11 @@
 #include "albumsmodel.h"
-#include "db/collectionDB.h"
 
 #include "vvave.h"
 
-#include <MauiKit4/FileBrowsing/downloader.h>
-#include <MauiKit4/FileBrowsing/fmstatic.h>
+#include <algorithm>
 
-#include <QTimer>
-
-AlbumsModel::AlbumsModel(QObject *parent) : MauiList(parent)
+AlbumsModel::AlbumsModel(QObject *parent)
+    : MauiList(parent)
 {
     qRegisterMetaType<FMH::MODEL_LIST>("FMH::MODEL_LIST");
     qRegisterMetaType<FMH::MODEL>("FMH::MODEL");
@@ -16,44 +13,12 @@ AlbumsModel::AlbumsModel(QObject *parent) : MauiList(parent)
 
 void AlbumsModel::componentComplete()
 {
-    auto timer = new QTimer(this);
-    timer->setSingleShot(true);
-    timer->setInterval(1000);
-
-    if (query == QUERY::ALBUMS) {
-
-        connect(CollectionDB::getInstance(), &CollectionDB::albumInserted, [this, timer](QVariantMap) {
-            m_newAlbums++;
-            timer->start();
-        });
-
-        connect(timer, &QTimer::timeout, [this]()
-        {
-            if (m_newAlbums > 0) {
-                this->setList();
-                m_newAlbums = 0;
-            }
-        });
-
-    } else {
-
-        connect(CollectionDB::getInstance(), &CollectionDB::artistInserted, [this, timer](QVariantMap) {
-            m_newAlbums++;
-            timer->start();
-        });
-
-        connect(timer, &QTimer::timeout, [this]()
-        {
-            if (m_newAlbums > 0) {
-                this->setList();
-                m_newAlbums = 0;
-            }
-        });
-    }
-
-    connect(vvave::instance(), &vvave::sourceRemoved, this, &AlbumsModel::setList);
+    m_componentCompleted = true;
+    connect(vvave::instance(), &vvave::collectionChanged, this, &AlbumsModel::setList);
     connect(this, &AlbumsModel::queryChanged, this, &AlbumsModel::setList);
-    setList();
+    if (m_autoPopulate) {
+        reload(true);
+    }
 }
 
 const FMH::MODEL_LIST &AlbumsModel::items() const
@@ -75,19 +40,44 @@ AlbumsModel::QUERY AlbumsModel::getQuery() const
     return this->query;
 }
 
+bool AlbumsModel::autoPopulate() const
+{
+    return m_autoPopulate;
+}
+
+void AlbumsModel::setAutoPopulate(bool autoPopulate)
+{
+    if (m_autoPopulate == autoPopulate) {
+        return;
+    }
+
+    m_autoPopulate = autoPopulate;
+    Q_EMIT autoPopulateChanged(m_autoPopulate);
+
+    if (m_componentCompleted && m_autoPopulate) {
+        reload(true);
+    }
+}
+
 void AlbumsModel::setList()
 {
-    Q_EMIT this->preListChanged();
+    reload(false);
+}
 
-    QString m_Query;
-    if (this->query == AlbumsModel::QUERY::ALBUMS)
-        m_Query = "select * from albums order by album asc";
-    else if (this->query == AlbumsModel::QUERY::ARTISTS)
-        m_Query = "select * from artists order by artist asc";
-    else
+void AlbumsModel::reload(bool force)
+{
+    if (!force && !m_autoPopulate) {
         return;
+    }
 
-    this->list = CollectionDB::getInstance()->getDBData(m_Query);
+    Q_EMIT this->preListChanged();
+    this->list.clear();
+
+    if (this->query == AlbumsModel::QUERY::ALBUMS) {
+        this->list = vvave::albums();
+    } else if (this->query == AlbumsModel::QUERY::ARTISTS) {
+        this->list = vvave::artists();
+    }
 
     Q_EMIT this->postListChanged();
     Q_EMIT this->countChanged();
@@ -95,7 +85,7 @@ void AlbumsModel::setList()
 
 void AlbumsModel::refresh()
 {
-    this->setList();
+    this->reload(true);
 }
 
 int AlbumsModel::indexOfName(const QString &query)

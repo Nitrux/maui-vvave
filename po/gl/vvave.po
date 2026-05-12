@@ -27,7 +27,7 @@ msgstr "Organice e escoite música."
 msgid "Developer"
 msgstr "Desenvolvemento."
 
-#: src/main.qml:331 src/main.qml:480 src/widgets/BabeTable/BabeTable.qml:158
+#: src/main.qml:331 src/main.qml:480 src/widgets/VVaveTable/VVaveTable.qml:158
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:61
 #: src/widgets/SelectionBar.qml:71
 #, kde-format
@@ -54,7 +54,7 @@ msgstr "Preguntar antes de pechar se hai música reproducíndose."
 msgid "Save current playlist session"
 msgstr "Gardar a sesión da lista de reprodución actual."
 
-#: src/main.qml:473 src/widgets/BabeTable/BabeTable.qml:151
+#: src/main.qml:473 src/widgets/VVaveTable/VVaveTable.qml:151
 #, kde-format
 msgid "Remove track"
 msgid_plural "Remove %1 tracks"
@@ -68,7 +68,7 @@ msgid ""
 msgstr ""
 "Seguro que quere eliminar estes ficheiros? Esta acción non se pode desfacer."
 
-#: src/main.qml:490 src/widgets/BabeTable/BabeTable.qml:171
+#: src/main.qml:490 src/widgets/VVaveTable/VVaveTable.qml:171
 #: src/widgets/SleepTimerDialog.qml:154
 #, kde-format
 msgid "Cancel"
@@ -202,7 +202,7 @@ msgstr "Engadir fontes"
 msgid "This list is empty"
 msgstr "A lista está baleira."
 
-#: src/widgets/BabeGrid/BabeGrid.qml:47 src/widgets/BabeTable/BabeTable.qml:110
+#: src/widgets/VVaveGrid/VVaveGrid.qml:47 src/widgets/VVaveTable/VVaveTable.qml:110
 #: src/widgets/CloudView/CloudView.qml:24
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:94
 #, kde-format
@@ -211,22 +211,22 @@ msgid_plural "Filter %1 albums"
 msgstr[0] "Filtrar"
 msgstr[1] "Filtrar %1 álbums"
 
-#: src/widgets/BabeTable/BabeTable.qml:76
+#: src/widgets/VVaveTable/VVaveTable.qml:76
 #, kde-format
 msgid "Shuffle Play"
 msgstr "Reproducir aleatoriamente"
 
-#: src/widgets/BabeTable/BabeTable.qml:83 src/widgets/TracksGroup.qml:47
+#: src/widgets/VVaveTable/VVaveTable.qml:83 src/widgets/TracksGroup.qml:47
 #, kde-format
 msgid "Play All"
 msgstr "Reproducilo todo"
 
-#: src/widgets/BabeTable/BabeTable.qml:90 src/widgets/TracksGroup.qml:55
+#: src/widgets/VVaveTable/VVaveTable.qml:90 src/widgets/TracksGroup.qml:55
 #, kde-format
 msgid "Append All"
 msgstr "Engadilo todo"
 
-#: src/widgets/BabeTable/BabeTable.qml:152
+#: src/widgets/VVaveTable/VVaveTable.qml:152
 #, kde-format
 msgid ""
 "Are you sure you want to delete the file from your computer? This action can "
@@ -234,65 +234,65 @@ msgid ""
 msgstr ""
 "Seguro que quere eliminar o ficheiro? Esta acción non se pode desfacer."
 
-#: src/widgets/BabeTable/BabeTable.qml:185 src/widgets/TracksGroup.qml:68
+#: src/widgets/VVaveTable/VVaveTable.qml:185 src/widgets/TracksGroup.qml:68
 #, kde-format
 msgid "Go to Artist"
 msgstr "Ir á intérprete"
 
-#: src/widgets/BabeTable/BabeTable.qml:192 src/widgets/TracksGroup.qml:75
+#: src/widgets/VVaveTable/VVaveTable.qml:192 src/widgets/TracksGroup.qml:75
 #, kde-format
 msgid "Go to Album"
 msgstr "Ir ao álbum"
 
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "Fav it"
 msgstr "Facer favorito"
 
 # skip-rule: trasno-remove_reverse
-#: src/widgets/BabeTable/TableMenu.qml:36
+#: src/widgets/VVaveTable/TableMenu.qml:36
 #, kde-format
 msgid "UnFav it"
 msgstr "Retirar dos favoritos"
 
-#: src/widgets/BabeTable/TableMenu.qml:46
+#: src/widgets/VVaveTable/TableMenu.qml:46
 #: src/widgets/PlaylistsView/PlaylistsViewModel.qml:53
 #, kde-format
 msgid "Edit"
 msgstr "Editar"
 
-#: src/widgets/BabeTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
+#: src/widgets/VVaveTable/TableMenu.qml:56 src/widgets/FocusView.qml:527
 #: src/widgets/SelectionBar.qml:54
 #, kde-format
 msgid "Share"
 msgstr "Compartir"
 
-#: src/widgets/BabeTable/TableMenu.qml:66
+#: src/widgets/VVaveTable/TableMenu.qml:66
 #, kde-format
 msgid "Add to '%1'"
 msgstr "Engadir a «%1»"
 
-#: src/widgets/BabeTable/TableMenu.qml:76
+#: src/widgets/VVaveTable/TableMenu.qml:76
 #, kde-format
 msgid "Add to playlist"
 msgstr "Engadir á lista de reprodución"
 
-#: src/widgets/BabeTable/TableMenu.qml:86
+#: src/widgets/VVaveTable/TableMenu.qml:86
 #, kde-format
 msgid "Select"
 msgstr "Seleccionar"
 
-#: src/widgets/BabeTable/TableMenu.qml:99
+#: src/widgets/VVaveTable/TableMenu.qml:99
 #, kde-format
 msgid "Play Next"
 msgstr "Reproducir a seguinte"
 
-#: src/widgets/BabeTable/TableMenu.qml:124
+#: src/widgets/VVaveTable/TableMenu.qml:124
 #, kde-format
 msgid "Show in Folder"
 msgstr "Amosar no cartafol"
 
-#: src/widgets/BabeTable/TableMenu.qml:150
+#: src/widgets/VVaveTable/TableMenu.qml:150
 #, kde-format
 msgid "Delete"
 msgstr "Eliminar"
