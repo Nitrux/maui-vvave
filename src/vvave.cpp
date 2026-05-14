@@ -125,6 +125,76 @@ QString albumLookupKey(const QString &album, const QString &artist)
     return normalizeLookupValue(album) + QStringLiteral("\x1f") + normalizeLookupValue(artist);
 }
 
+QUrl normalizeSourceUrl(const QUrl &source)
+{
+    QString localPath;
+
+    if (source.isLocalFile()) {
+        localPath = source.toLocalFile();
+    } else if (source.scheme().isEmpty()) {
+        localPath = source.toString();
+    } else {
+        return {};
+    }
+
+    localPath = QDir::cleanPath(localPath.trimmed());
+    if (localPath.isEmpty()) {
+        return {};
+    }
+
+    QFileInfo info(localPath);
+    if (info.isRelative()) {
+        localPath = QDir::cleanPath(QDir::current().absoluteFilePath(localPath));
+    } else {
+        localPath = info.absoluteFilePath();
+    }
+
+    if (localPath.isEmpty()) {
+        return {};
+    }
+
+    return QUrl::fromLocalFile(localPath).adjusted(QUrl::NormalizePathSegments | QUrl::StripTrailingSlash);
+}
+
+QString normalizedSourceKey(const QUrl &source)
+{
+    return source.toString(QUrl::FullyEncoded | QUrl::NormalizePathSegments | QUrl::StripTrailingSlash);
+}
+
+QList<QUrl> sanitizeSourceList(const QList<QUrl> &sources, bool *changed = nullptr)
+{
+    QList<QUrl> sanitized;
+    QSet<QString> seenKeys;
+    bool modified = false;
+
+    for (const auto &source : sources) {
+        const auto normalized = normalizeSourceUrl(source);
+        if (!normalized.isValid()) {
+            modified = true;
+            continue;
+        }
+
+        const auto key = normalizedSourceKey(normalized);
+        if (seenKeys.contains(key)) {
+            modified = true;
+            continue;
+        }
+
+        seenKeys.insert(key);
+        sanitized << normalized;
+
+        if (normalized != source) {
+            modified = true;
+        }
+    }
+
+    if (changed) {
+        *changed = modified;
+    }
+
+    return sanitized;
+}
+
 void invalidateTrackCache()
 {
     s_trackCacheValid = false;
@@ -861,11 +931,13 @@ FMH::MODEL_LIST vvave::tracksFromQuery(const QString &query)
 
     if (query.startsWith(QStringLiteral("vvave://album/"))) {
         const auto payload = query.mid(QStringLiteral("vvave://album/").size());
-        const auto parts = payload.split(QLatin1Char('/'));
+        const int separator = payload.lastIndexOf(QLatin1Char('/'));
 
-        if (parts.size() >= 2) {
-            const auto album = QUrl::fromPercentEncoding(parts.at(0).toUtf8());
-            const auto artist = QUrl::fromPercentEncoding(parts.at(1).toUtf8());
+        if (separator > 0 && separator < (payload.size() - 1)) {
+            const auto encodedAlbum = payload.left(separator);
+            const auto encodedArtist = payload.mid(separator + 1);
+            const auto album = QUrl::fromPercentEncoding(encodedAlbum.toUtf8());
+            const auto artist = QUrl::fromPercentEncoding(encodedArtist.toUtf8());
             localTracks();
             ensureCollectionIndexes();
             return tracksForRows(s_albumTrackRows.value(albumLookupKey(album, artist)));
@@ -943,16 +1015,25 @@ bool vvave::fetchArtwork() const
 
 void vvave::addSources(const QList<QUrl> &paths)
 {
-    auto urls = QUrl::fromStringList(sources());
+    bool changed = false;
+    auto urls = sanitizeSourceList(QUrl::fromStringList(sources()), &changed);
+    auto incoming = sanitizeSourceList(paths);
     QList<QUrl> newUrls;
+    QSet<QString> seenKeys;
 
-    for (const auto &path : paths) {
-        if (!urls.contains(path)) {
+    for (const auto &url : urls) {
+        seenKeys.insert(normalizedSourceKey(url));
+    }
+
+    for (const auto &path : incoming) {
+        const auto key = normalizedSourceKey(path);
+        if (!seenKeys.contains(key)) {
             newUrls << path;
+            seenKeys.insert(key);
         }
     }
 
-    if (newUrls.isEmpty()) {
+    if (newUrls.isEmpty() && !changed) {
         return;
     }
 
@@ -974,20 +1055,31 @@ void vvave::addSources(const QList<QUrl> &paths)
 
 bool vvave::removeSource(const QString &source)
 {
-    auto urls = this->sources();
-    if (!urls.contains(source)) {
+    auto urls = sanitizeSourceList(QUrl::fromStringList(this->sources()));
+    const auto target = normalizeSourceUrl(QUrl::fromUserInput(source));
+
+    if (!target.isValid()) {
         return false;
     }
 
-    urls.removeOne(source);
+    const auto targetKey = normalizedSourceKey(target);
+    const auto removeIt = std::find_if(urls.begin(), urls.end(), [&](const QUrl &url) {
+        return normalizedSourceKey(url) == targetKey;
+    });
+
+    if (removeIt == urls.end()) {
+        return false;
+    }
+
+    urls.erase(removeIt);
 
     QSettings settings;
     settings.beginGroup("SETTINGS");
-    settings.setValue("SOURCES", QVariant::fromValue(urls));
+    settings.setValue("SOURCES", QVariant::fromValue(QUrl::toStringList(urls)));
     settings.endGroup();
 
-    scanDir(QUrl::fromStringList(urls));
-    Q_EMIT this->sourceRemoved(QUrl(source));
+    scanDir(urls);
+    Q_EMIT this->sourceRemoved(target);
     Q_EMIT sourcesChanged();
     return true;
 }
@@ -1026,14 +1118,33 @@ QStringList vvave::sources()
 {
     QSettings settings;
     settings.beginGroup("SETTINGS");
-    auto data = settings.value("SOURCES").toStringList();
+    const auto stored = settings.value("SOURCES").toStringList();
     settings.endGroup();
 
-    if (data.isEmpty()) {
-        data << FMStatic::MusicPath;
+    QList<QUrl> loaded = QUrl::fromStringList(stored);
+    if (loaded.isEmpty()) {
+        loaded << normalizeSourceUrl(QUrl::fromUserInput(FMStatic::MusicPath));
     }
 
-    return data;
+    bool changed = false;
+    auto sanitized = sanitizeSourceList(loaded, &changed);
+    if (sanitized.isEmpty()) {
+        const auto fallback = normalizeSourceUrl(QUrl::fromUserInput(FMStatic::MusicPath));
+        if (fallback.isValid()) {
+            sanitized << fallback;
+            changed = true;
+        }
+    }
+
+    const auto result = QUrl::toStringList(sanitized);
+    if (changed || result != stored) {
+        QSettings writableSettings;
+        writableSettings.beginGroup("SETTINGS");
+        writableSettings.setValue("SOURCES", QVariant::fromValue(result));
+        writableSettings.endGroup();
+    }
+
+    return result;
 }
 
 QVariantList vvave::sourcesModel()

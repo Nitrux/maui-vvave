@@ -6,9 +6,7 @@ import org.mauikit.controls as Maui
 import org.maui.vvave
 
 import "VVaveGrid"
-import "VVaveTable"
 
-import "../db/Queries.js" as Q
 import "../utils/Player.js" as Player
 
 StackView
@@ -27,6 +25,21 @@ StackView
 
     property Flickable flickable : currentItem.flickable
 
+    function encodeQueryPart(value)
+    {
+        return encodeURIComponent(String(value || "").trim()).replace(/\//g, "%2F")
+    }
+
+    function buildAlbumTracksQuery(album, artist)
+    {
+        return "vvave://album/" + encodeQueryPart(album) + "/" + encodeQueryPart(artist)
+    }
+
+    function buildArtistTracksQuery(artist)
+    {
+        return "vvave://artist/" + encodeQueryPart(artist)
+    }
+
     initialItem: VVaveGrid
     {
         id: albumsViewGrid
@@ -43,11 +56,10 @@ StackView
 
             if (albumName.length > 0 && artistName.length > 0)
             {
-                query = Q.GET.albumTracks_.arg(encodeURIComponent(albumName))
-                query = query.arg(encodeURIComponent(artistName))
+                query = control.buildAlbumTracksQuery(albumName, artistName)
             } else if (artistName.length > 0 && albumName.length === 0)
             {
-                query = Q.GET.artistTracks_.arg(encodeURIComponent(artistName))
+                query = control.buildArtistTracksQuery(artistName)
             }
 
             if (query.length > 0)
@@ -59,13 +71,10 @@ StackView
     {
         id: _tracksTableComponent
 
-        VVaveTable
+        TracksView
         {
             list.query: control.currentQuery
             trackNumberVisible: true
-            coverArtVisible: settings.fetchArtwork
-            showGenreSort: false
-            collapseRepeatedAlbumArt: false
             focus: true
 
             holder.emoji: "qrc:/assets/media-album-track.svg"
@@ -103,28 +112,12 @@ StackView
                     elide: Text.ElideRight
                     Layout.maximumWidth: Maui.Style.units.gridUnit * 14
                 }
-            }
 
-            onQueueTrack: (index) => Player.queueTracks([listModel.get(index)], index)
-            onRowClicked: (index) => Player.quickPlay(listModel.get(index))
-            onAppendTrack: (index) => Player.addTrack(listModel.get(index))
-
-            onPlayAll:
-            {
-                control.pop()
-                Player.playAllModel(listModel.list)
-            }
-
-            onAppendAll:
-            {
-                control.pop()
-                Player.appendAllModel(listModel.list)
-            }
-
-            onShuffleAll:
-            {
-                control.pop()
-                Player.shuffleAllModel(listModel.list)
+                ToolSeparator
+                {
+                    topPadding: 10
+                    bottomPadding: 10
+                }
             }
         }
     }
@@ -210,10 +203,9 @@ StackView
                 var query = ""
 
                 if (albumName.length > 0 && artistName.length > 0) {
-                    query = Q.GET.albumTracks_.arg(encodeURIComponent(albumName))
-                    query = query.arg(encodeURIComponent(artistName))
+                    query = control.buildAlbumTracksQuery(albumName, artistName)
                 } else if (artistName.length > 0) {
-                    query = Q.GET.artistTracks_.arg(encodeURIComponent(artistName))
+                    query = control.buildArtistTracksQuery(artistName)
                 }
 
                 if (query.length > 0)
@@ -245,7 +237,7 @@ StackView
     {
         currentAlbum = ""
         currentArtist = String(artist || "").trim()
-        currentQuery = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
+        currentQuery = buildArtistTracksQuery(currentArtist)
         control.push(_artistDetailsComponent)
     }
 
@@ -257,14 +249,12 @@ StackView
         var query
         if (currentAlbum.length > 0 && currentArtist.length > 0)
         {
-            query = Q.GET.albumTracks_.arg(encodeURIComponent(currentAlbum))
-            query = query.arg(encodeURIComponent(currentArtist))
+            query = buildAlbumTracksQuery(currentAlbum, currentArtist)
         }
         else if (currentArtist.length > 0 && currentAlbum.length === 0)
         {
-            query = Q.GET.artistTracks_.arg(encodeURIComponent(currentArtist))
+            query = buildArtistTracksQuery(currentArtist)
         }
-
         control.currentQuery = query
         control.push(_tracksTableComponent)
     }

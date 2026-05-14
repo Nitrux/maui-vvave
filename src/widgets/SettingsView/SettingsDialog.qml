@@ -117,13 +117,38 @@ Maui.SettingsDialog
         return -1
     }
 
+    function displaySourcePath(sourcePath)
+    {
+        const raw = String(sourcePath || "").trim()
+        if (raw.length === 0)
+            return ""
+
+        if (!raw.startsWith("file://"))
+            return raw
+
+        let local = raw.replace(/^file:\/\/localhost/i, "")
+        local = local.replace(/^file:\/\//i, "")
+        if (!local.startsWith("/"))
+            local = "/" + local
+
+        try
+        {
+            return decodeURIComponent(local)
+        }
+        catch (error)
+        {
+            return local
+        }
+    }
+
     Maui.InfoDialog
     {
         id: confirmationDialog
         property string url : ""
+        property string displayUrl: ""
 
         title : i18n("Remove source")
-        message : i18n("Are you sure you want to remove the source: \n%1", url)
+        message : i18n("Are you sure you want to remove the source: \n%1", displayUrl.length > 0 ? displayUrl : url)
         template.iconSource: "emblem-warning"
 
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -289,7 +314,7 @@ Maui.SettingsDialog
                     template.iconSource: modelData.icon
                     template.iconSizeHint: Maui.Style.iconSizes.small
                     template.label1.text: modelData.label
-                    template.label2.text: modelData.path
+                    template.label2.text: control.displaySourcePath(modelData.path)
 
                     template.content: ToolButton
                     {
@@ -298,6 +323,7 @@ Maui.SettingsDialog
                         onClicked:
                         {
                             confirmationDialog.url = modelData.path
+                            confirmationDialog.displayUrl = control.displaySourcePath(modelData.path)
                             confirmationDialog.open()
                         }
                     }
