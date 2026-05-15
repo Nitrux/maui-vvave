@@ -119,7 +119,7 @@ private:
     void setMediaPlayerPresent(int status);
     void setRate(double newRate);
     void setVolume(double volume);
-    void setPropertyPosition(int newPositionInMs);
+    void setPropertyPosition(qint64 newPositionInMs);
     void setCurrentTrack(int newTrackPosition);
 
     QVariantMap getMetadataOfCurrentTrack();
@@ -138,7 +138,7 @@ private:
     bool m_playerIsSeekableChanged = false;
     Player *m_audioPlayer = nullptr;
     mutable QDBusMessage mProgressIndicatorSignal;
-    int mPreviousProgressPosition = 0;
+    qint64 mPreviousProgressPosition = 0;
     bool mShowProgressOnTaskBar = true;
 };
 

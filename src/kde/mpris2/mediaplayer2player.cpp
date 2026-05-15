@@ -40,7 +40,7 @@ MediaPlayer2Player::MediaPlayer2Player(Playlist *playListControler, Player *audi
     connect(m_playListControler, &Playlist::canPlayChanged, this, &MediaPlayer2Player::skipForwardControlEnabledChanged);
     connect(m_audioPlayer, &Player::stateChanged, this, &MediaPlayer2Player::playerPlaybackStateChanged);
     connect(m_audioPlayer, &Player::stateChanged, this, &MediaPlayer2Player::playerIsSeekableChanged);
-//    connect(m_audioPlayer, &Player::posChanged, this, &MediaPlayer2Player::audioPositionChanged);
+    connect(m_audioPlayer, &Player::positionChanged, this, &MediaPlayer2Player::audioPositionChanged);
     connect(m_audioPlayer, &Player::trackChanged, this, &MediaPlayer2Player::audioDurationChanged);
     // connect(m_audioPlayer, &Player::volumeChanged, this, &MediaPlayer2Player::playerVolumeChanged);
 
@@ -184,7 +184,7 @@ qlonglong MediaPlayer2Player::Position() const
     return m_position;
 }
 
-void MediaPlayer2Player::setPropertyPosition(int newPositionInMs)
+void MediaPlayer2Player::setPropertyPosition(qint64 newPositionInMs)
 {
     m_position = qlonglong(newPositionInMs) * 1000;
 
@@ -193,6 +193,10 @@ void MediaPlayer2Player::setPropertyPosition(int newPositionInMs)
     /* only sent new progress when it has advanced more than 1 %
      * to limit DBus traffic
      */
+    if (m_audioPlayer->duration() <= 0) {
+        return;
+    }
+
     const auto incrementalProgress = static_cast<double>(newPositionInMs - mPreviousProgressPosition) / m_audioPlayer->duration();
     if (mShowProgressOnTaskBar && (incrementalProgress > 0.01 || incrementalProgress < 0)) {
         mPreviousProgressPosition = newPositionInMs;
@@ -247,7 +251,12 @@ void MediaPlayer2Player::Seek(qlonglong Offset)
 {
     if (mediaPlayerPresent()) {
         auto offset = (m_position + Offset) / 1000;
-        m_audioPlayer->setPosition(int(offset));
+        if (offset < 0) {
+            offset = 0;
+        } else if (m_audioPlayer->duration() > 0) {
+            offset = qMin<qlonglong>(offset, m_audioPlayer->duration());
+        }
+        m_audioPlayer->seek(offset);
     }
 }
 
@@ -259,7 +268,13 @@ void MediaPlayer2Player::emitSeeked(int pos)
 void MediaPlayer2Player::SetPosition(const QDBusObjectPath &trackId, qlonglong pos)
 {
     if (trackId.path() == m_currentTrackId) {
-        m_audioPlayer->setPosition(int(pos / 1000));
+        auto newPositionInMs = pos / 1000;
+        if (newPositionInMs < 0) {
+            newPositionInMs = 0;
+        } else if (m_audioPlayer->duration() > 0) {
+            newPositionInMs = qMin<qlonglong>(newPositionInMs, m_audioPlayer->duration());
+        }
+        m_audioPlayer->seek(newPositionInMs);
     }
 }
 
@@ -343,7 +358,7 @@ void MediaPlayer2Player::playerIsSeekableChanged()
 
 void MediaPlayer2Player::audioPositionChanged()
 {
-    setPropertyPosition(static_cast<int>(m_audioPlayer->position()));
+    setPropertyPosition(m_audioPlayer->elapsed());
 }
 
 void MediaPlayer2Player::audioDurationChanged()
@@ -355,7 +370,7 @@ void MediaPlayer2Player::audioDurationChanged()
     skipForwardControlEnabledChanged();
     playerPlaybackStateChanged();
     playerIsSeekableChanged();
-    setPropertyPosition(static_cast<int>(m_audioPlayer->position()));
+    setPropertyPosition(m_audioPlayer->elapsed());
 }
 
 void MediaPlayer2Player::playerVolumeChanged()
