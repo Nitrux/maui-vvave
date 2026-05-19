@@ -4,7 +4,21 @@
 
 function playTrack()
 {
-    player.source = currentTrack.url ? currentTrack.url : "";
+    const nextSource = currentTrack && currentTrack.url ? currentTrack.url : ""
+    const previousSource = player.source ? player.source : ""
+    const switchingSource = String(previousSource) !== String(nextSource)
+
+    if (!nextSource) {
+        player.stop()
+        return
+    }
+
+    // MediaPlayer::play() resumes paused playback without reloading source.
+    // Stop first when changing tracks so the new source is always played.
+    if (switchingSource)
+        player.stop()
+
+    player.source = nextSource
     player.play()
 }
 
