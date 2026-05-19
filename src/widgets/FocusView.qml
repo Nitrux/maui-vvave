@@ -15,6 +15,9 @@ StackView
 {
     id: control
 
+    Maui.Theme.colorSet: Maui.Theme.Complementary
+    Maui.Theme.inherit: false
+
     focus: true
     padding: 0
 

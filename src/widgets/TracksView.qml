@@ -95,7 +95,7 @@ VVaveTable
         })
     }
 
-    headBar.visible: Vvave.Vvave.sources.length > 0 && count > 0
+    headBar.visible: Vvave.Vvave.sources.length > 0 && list.count > 0
     holder.visible: Vvave.Vvave.sources.length === 0 || count === 0
     holder.emoji: "folder-music"
     holder.title : i18n("No Tracks!")

@@ -2,6 +2,8 @@ import QtQuick
 import QtCore
 
 import QtQuick.Controls
+import QtQuick.Effects
+import QtQuick.Shapes
 import QtQuick.Window
 import QtQuick.Layouts
 
@@ -55,7 +57,6 @@ Maui.ApplicationWindow
                                                   currentTrack && currentTrack.artist ? currentTrack.artist : "",
                                                   currentTrack && currentTrack.album ? currentTrack.album : "")
 
-    Maui.Style.styleType: focusView ? Maui.Style.Dark : undefined
     Maui.Style.accentColor: focusView ? focusAccentColor : root.vvaveColor
 
     property QtObject tagsDialog : null
@@ -593,6 +594,19 @@ Maui.ApplicationWindow
             footBar.topPadding: 0
             footBar.bottomPadding: 0
             readonly property int footerArtworkSize: Math.max(Maui.Style.iconSizes.medium, footBar.preferredHeight - (Maui.Style.space.small * 2))
+            readonly property int expandedVolumeSliderWidth: Maui.Style.units.gridUnit * 6
+            readonly property bool compactVolumeControl: footBar.width > 0
+                && footBar.width < (footBar.leftLayout.implicitWidth
+                                    + _footerVolumeButton.implicitWidth
+                                    + expandedVolumeSliderWidth
+                                    + Maui.Style.units.gridUnit * 8)
+            property bool compactVolumePopupVisible: false
+
+            onCompactVolumeControlChanged:
+            {
+                if (!compactVolumeControl)
+                    compactVolumePopupVisible = false
+            }
 
         footBar.leftContent: [
             Maui.ToolActions
@@ -707,13 +721,37 @@ Maui.ApplicationWindow
                 font.family: "Font Awesome 6 Free Solid"
                 font.pixelSize: Maui.Style.fontSizes.small
                 font.weight: Font.Black
-                onClicked: toggleFooterMute()
+                onClicked:
+                {
+                    if (!_mainPage.compactVolumeControl) {
+                        toggleFooterMute()
+                    } else {
+                        _mainPage.compactVolumePopupVisible = !_mainPage.compactVolumePopupVisible
+                    }
+                }
+
+                MouseArea
+                {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    hoverEnabled: true
+                    z: 10
+                    onWheel: function(wheel)
+                    {
+                        const delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y
+                        if (delta === 0)
+                            return
+                        setFooterVolume((_footerVolumeSlider.value || 0) + (delta > 0 ? _footerVolumeSlider.stepSize : -_footerVolumeSlider.stepSize))
+                        wheel.accepted = true
+                    }
+                }
             }
 
             Slider
             {
                 id: _footerVolumeSlider
-                Layout.preferredWidth: Maui.Handy.isMobile ? Maui.Style.units.gridUnit * 4 : Maui.Style.units.gridUnit * 6
+                visible: !_mainPage.compactVolumeControl
+                Layout.preferredWidth: visible ? _mainPage.expandedVolumeSliderWidth : 0
                 Layout.rightMargin: Maui.Style.space.small
                 from: 0
                 to: 100
@@ -743,8 +781,24 @@ Maui.ApplicationWindow
             ToolButton
             {
                 visible: focusView
-                icon.name: root.focusView ? "go-down" : "go-up"
                 onClicked: toggleFocusView()
+                padding: Maui.Style.space.small
+
+                contentItem: Shape
+                {
+                    implicitWidth: 10
+                    implicitHeight: 6
+
+                    ShapePath
+                    {
+                        fillColor: Maui.Theme.textColor
+                        strokeWidth: -1
+                        startX: 0; startY: 0
+                        PathLine { x: 10; y: 0 }
+                        PathLine { x: 5; y: 6 }
+                        PathLine { x: 0; y: 0 }
+                    }
+                }
             }
         }
 
@@ -823,6 +877,98 @@ Maui.ApplicationWindow
                 }
             }
         }
+
+            Rectangle
+            {
+                id: _compactVolumePopup
+                parent: root.contentItem
+                visible: _mainPage.compactVolumeControl && _mainPage.compactVolumePopupVisible
+                z: 2000
+                width: Math.max(Maui.Style.units.gridUnit * 3,
+                                _compactVolumeContent.implicitWidth + (Maui.Style.space.small * 2))
+                height: _compactVolumeContent.implicitHeight + (Maui.Style.space.small * 2)
+
+                x: {
+                    const host = root.contentItem
+                    if (!host || !_footerVolumeButton) return 0
+                    const margin = Maui.Style.space.small
+                    const buttonCenter = _footerVolumeButton.mapToItem(host, _footerVolumeButton.width / 2, 0)
+                    const rawX = buttonCenter.x - (width / 2)
+                    const maxX = Math.max(margin, host.width - width - margin)
+                    return Math.max(margin, Math.min(rawX, maxX))
+                }
+
+                y: {
+                    const host = root.contentItem
+                    if (!host || !_footerVolumeButton) return 0
+                    const margin = Maui.Style.space.small
+                    const buttonTop = _footerVolumeButton.mapToItem(host, 0, 0)
+                    const preferredAbove = buttonTop.y - height - margin
+                    const maxY = Math.max(margin, host.height - height - margin)
+                    if (preferredAbove >= margin)
+                        return Math.max(margin, Math.min(preferredAbove, maxY))
+                    const buttonBottom = _footerVolumeButton.mapToItem(host, 0, _footerVolumeButton.height)
+                    return Math.max(margin, Math.min(buttonBottom.y + margin, maxY))
+                }
+
+                color: Maui.Theme.backgroundColor
+                radius: Maui.Style.radiusV
+                border.color: Maui.Theme.alternateBackgroundColor
+                border.width: 1
+
+                layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+                layer.effect: MultiEffect
+                {
+                    shadowEnabled: true
+                    shadowColor: Qt.rgba(0, 0, 0, 0.35)
+                    shadowBlur: 0.4
+                    shadowVerticalOffset: 2
+                }
+
+                ColumnLayout
+                {
+                    id: _compactVolumeContent
+                    anchors.fill: parent
+                    anchors.margins: Maui.Style.space.small
+                    spacing: Maui.Style.space.small
+
+                    Label
+                    {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Math.round(player.volume || 0) + "%"
+                    }
+
+                    Slider
+                    {
+                        id: _compactVolumeSlider
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: Maui.Style.units.gridUnit
+                        orientation: Qt.Vertical
+                        implicitHeight: Maui.Style.units.gridUnit * 8
+                        from: 0
+                        to: 100
+                        stepSize: 5
+                        value: player.volume
+                        onMoved: setFooterVolume(value)
+
+                        MouseArea
+                        {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            hoverEnabled: true
+                            z: 10
+                            onWheel: function(wheel)
+                            {
+                                const delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y
+                                if (delta === 0)
+                                    return
+                                setFooterVolume((_compactVolumeSlider.value || 0) + (delta > 0 ? _compactVolumeSlider.stepSize : -_compactVolumeSlider.stepSize))
+                                wheel.accepted = true
+                            }
+                        }
+                    }
+                }
+            }
 
             StackView
             {
@@ -999,7 +1145,7 @@ Maui.ApplicationWindow
                 TracksView
                 {
                     id: _tracksView
-                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.tracks
+                    list.autoPopulate: swipeView.currentIndex === viewsIndex.tracks
                 }
 
                 AlbumsView
@@ -1008,7 +1154,7 @@ Maui.ApplicationWindow
                     holder.title : i18n("No Albums!")
                     holder.body: i18n("Add new music sources")
                     list.query: Albums.ALBUMS
-                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.albums
+                    list.autoPopulate: swipeView.currentIndex === viewsIndex.albums
                 }
 
                 AlbumsView
@@ -1017,7 +1163,7 @@ Maui.ApplicationWindow
                     holder.title : i18n("No Artists!")
                     holder.body: i18n("Add new music sources")
                     list.query : Albums.ARTISTS
-                    list.autoPopulate: !root.focusView && swipeView.currentIndex === viewsIndex.artists
+                    list.autoPopulate: swipeView.currentIndex === viewsIndex.artists
                 }
 
                 TagsView
