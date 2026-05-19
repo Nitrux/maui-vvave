@@ -6,6 +6,7 @@
 
 #include <MauiKit4/FileBrowsing/downloader.h>
 
+#include <QCache>
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
@@ -38,12 +39,18 @@ struct ArtworkRequestData
     bool unknownMetadata = false;
 };
 
-QHash<QString, QImage> s_sessionArtworkCache;
+// Cost unit: KB of raw pixel data. Capped at 64 MB to prevent unbounded growth.
+QCache<QString, QImage> s_sessionArtworkCache(64 * 1024);
 QHash<QString, qint64> s_missingArtworkCooldownUntil;
 QHash<QString, QList<QPointer<AsyncImageResponse>>> s_pendingResponses;
 QSet<QString> s_inFlightFetches;
 QQueue<ArtworkRequestData> s_fetchQueue;
 int s_activeFetches = 0;
+
+int artworkCostKb(const QImage &img)
+{
+    return static_cast<int>(std::max(qint64(1), img.sizeInBytes() / 1024));
+}
 
 QImage fallbackArtwork()
 {
@@ -173,7 +180,7 @@ void removeInvalidArtworkFile(const QString &localPath)
 void completePendingResponses(const QString &cacheKey, const QImage &image, bool rememberMiss)
 {
     if (!image.isNull()) {
-        s_sessionArtworkCache.insert(cacheKey, image);
+        s_sessionArtworkCache.insert(cacheKey, new QImage(image), artworkCostKb(image));
         s_missingArtworkCooldownUntil.remove(cacheKey);
     } else if (rememberMiss) {
         s_missingArtworkCooldownUntil.insert(cacheKey, QDateTime::currentMSecsSinceEpoch() + kMissingArtworkRetryMs);
@@ -303,9 +310,9 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
         return;
     }
 
-    const auto cachedImageIt = s_sessionArtworkCache.constFind(request.cacheKey);
-    if (cachedImageIt != s_sessionArtworkCache.constEnd() && !cachedImageIt.value().isNull()) {
-        finishWithImage(cachedImageIt.value());
+    const QImage *cachedImagePtr = s_sessionArtworkCache.object(request.cacheKey);
+    if (cachedImagePtr && !cachedImagePtr->isNull()) {
+        finishWithImage(*cachedImagePtr);
         return;
     }
 
@@ -318,7 +325,7 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
             removeInvalidArtworkFile(cachedPath);
             finishWithImage(fallbackArtwork());
         } else {
-            s_sessionArtworkCache.insert(request.cacheKey, cachedImage);
+            s_sessionArtworkCache.insert(request.cacheKey, new QImage(cachedImage), artworkCostKb(cachedImage));
             finishWithImage(cachedImage);
         }
         return;

@@ -40,7 +40,12 @@ Maui.Page
     property bool enforceDefaultTitleSort: false
     property bool showGenreSort: true
     property bool _defaultSortApplied: false
+    property bool _initialPositionDone: false
     property string _pendingFilterQuery: ""
+
+    // Hide content until the first sort+scroll is done so no intermediate frame is shown.
+    // When there's nothing to wait for (empty state or no enforced sort) show immediately.
+    readonly property bool _listReady: !enforceDefaultTitleSort || _initialPositionDone || count === 0
 
     readonly property alias contextMenu : contextMenu
     property alias contextMenuItems : contextMenu.contentData
@@ -95,6 +100,15 @@ Maui.Page
         _alphaSortCombo.currentIndex = 0
         _genreSortCombo.currentIndex = 0
         _defaultSortApplied = true
+
+        // The sort toggle and the topMargin binding change both shift contentY.
+        // Defer until layout settles, then snap back to the top and reveal the list.
+        Qt.callLater(() => {
+            const lv = _listBrowser.flickable
+            const headerH = lv.headerItem ? lv.headerItem.height : 0
+            lv.contentY = -lv.topMargin - headerH
+            _initialPositionDone = true
+        })
     }
 
     Maui.Theme.colorSet: Maui.Theme.Window
@@ -278,6 +292,8 @@ Maui.Page
     {
         id: _listBrowser
         anchors.fill: parent
+        opacity: control._listReady ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
         holder.visible: control.count === 0 || control.listModel.list.count === 0
         enableLassoSelection: true
         selectionMode: root.selectionMode

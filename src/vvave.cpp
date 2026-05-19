@@ -20,6 +20,7 @@
 #include <QSaveFile>
 #include <QSet>
 #include <QSettings>
+#include <QFutureWatcher>
 #include <QTimer>
 #include <QtConcurrent>
 #include <array>
@@ -78,6 +79,12 @@ struct CollectionScanStats
     int reusedTracks = 0;
     int parsedTracks = 0;
     qint64 elapsedMs = 0;
+};
+
+struct ScanResult
+{
+    FMH::MODEL_LIST tracks;
+    CollectionScanStats stats;
 };
 
 CollectionScanStats s_lastScanStats;
@@ -789,16 +796,14 @@ FMH::MODEL vvave::trackInfo(const QUrl &url)
                       {FMH::MODEL_KEY::RELEASEDATE, QString::number(year)}};
 }
 
-FMH::MODEL_LIST vvave::localTracks()
+// Runs entirely on a background thread — must not read or write any global state.
+// Receives source URLs as a parameter to avoid touching QSettings from the worker.
+ScanResult performScanWork(const QList<QUrl> &sourceUrls)
 {
-    if (s_trackCacheValid) {
-        return s_cachedTracks;
-    }
-
     QElapsedTimer timer;
     timer.start();
 
-    const auto loadedCache = loadTrackCache();
+    auto loadedCache = loadTrackCache();
     auto updatedCacheEntries = QHash<QString, CachedTrackEntry>();
     updatedCacheEntries.reserve(loadedCache.entries.size() > 128 ? loadedCache.entries.size() : 128);
 
@@ -811,13 +816,12 @@ FMH::MODEL_LIST vvave::localTracks()
     bool cacheDirty = !loadedCache.valid;
     int reusedTracks = 0;
 
-    for (const auto &source : QUrl::fromStringList(vvave::sources())) {
+    for (const auto &source : sourceUrls) {
         if (!source.isLocalFile()) {
             continue;
         }
 
-        const auto sourcePath = source.toLocalFile();
-        QFileInfo sourceInfo(sourcePath);
+        QFileInfo sourceInfo(source.toLocalFile());
         collectAudioFilesFromSource(sourceInfo,
                                     loadedCache.entries,
                                     updatedCacheEntries,
@@ -828,10 +832,14 @@ FMH::MODEL_LIST vvave::localTracks()
                                     cacheDirty);
     }
 
+    const bool loadedCacheValid = loadedCache.valid;
+    const int loadedCacheEntryCount = static_cast<int>(loadedCache.entries.size());
+    { QHash<QString, CachedTrackEntry> tmp; loadedCache.entries.swap(tmp); }
+
     const auto parsedResults = parsePendingTracks(pendingParses);
     applyParsedTracks(parsedResults, trackSlots, updatedCacheEntries);
 
-    const int parsedTracks = pendingParses.size();
+    const int parsedTracks = static_cast<int>(pendingParses.size());
     const auto tracks = materializeTrackList(trackSlots);
 
     CollectionScanStats stats;
@@ -839,13 +847,12 @@ FMH::MODEL_LIST vvave::localTracks()
     stats.reusedTracks = reusedTracks;
     stats.parsedTracks = parsedTracks;
     stats.elapsedMs = timer.elapsed();
-    updateScanStats(stats);
 
-    if (loadedCache.valid && stats.parsedTracks == 0 && updatedCacheEntries.size() == loadedCache.entries.size()) {
+    if (loadedCacheValid && stats.parsedTracks == 0 && updatedCacheEntries.size() == loadedCacheEntryCount) {
         cacheDirty = false;
     }
 
-    if (updatedCacheEntries.size() != loadedCache.entries.size()) {
+    if (updatedCacheEntries.size() != loadedCacheEntryCount) {
         cacheDirty = true;
     }
 
@@ -853,12 +860,23 @@ FMH::MODEL_LIST vvave::localTracks()
         saveTrackCache(updatedCacheEntries);
     }
 
-    s_cachedTracks = tracks;
-    s_trackCacheValid = true;
-    ensureCollectionIndexes();
+    return ScanResult{tracks, stats};
+}
 
-    logScanSummary(lastScanStats());
-    return s_cachedTracks;
+FMH::MODEL_LIST vvave::localTracks()
+{
+    if (s_trackCacheValid) {
+        return s_cachedTracks;
+    }
+
+    // Cache is not ready. Trigger a background scan if one isn't already running;
+    // callers will receive the data through collectionChanged → setList.
+    auto *inst = instance();
+    if (!inst->m_scanning && !inst->m_scanScheduled && !sources().isEmpty()) {
+        inst->rescan();
+    }
+
+    return {};
 }
 
 FMH::MODEL_LIST vvave::albums()
@@ -1098,15 +1116,34 @@ void vvave::scanDir(const QList<QUrl> &paths)
     Q_EMIT scanningChanged(m_scanning);
     m_scanScheduled = true;
 
-    QTimer::singleShot(0, this, [this]() {
-        localTracks();
+    // Snapshot source URLs on the main thread before handing off to the worker.
+    const QList<QUrl> sourceUrls = QUrl::fromStringList(sources());
+
+    auto *watcher = new QFutureWatcher<ScanResult>(this);
+    connect(watcher, &QFutureWatcher<ScanResult>::finished, this, [this, watcher]() {
+        auto result = watcher->result();
+        watcher->deleteLater();
+
+        // Apply results back on the main thread — all global state stays main-thread-only.
+        s_cachedTracks = std::move(result.tracks);
+        s_trackCacheValid = true;
+        s_collectionIndexesValid = false;
+        ensureCollectionIndexes();
+        updateScanStats(result.stats);
+        logScanSummary(lastScanStats());
+
         m_scanScheduled = false;
         m_scanning = false;
         Q_EMIT scanningChanged(m_scanning);
         Q_EMIT collectionChanged();
-        const auto stats = lastScanStats();
+
+        const auto &stats = result.stats;
         Q_EMIT scanFinished(stats.totalTracks, stats.reusedTracks, stats.parsedTracks, stats.elapsedMs);
     });
+
+    watcher->setFuture(QtConcurrent::run([sourceUrls]() -> ScanResult {
+        return performScanWork(sourceUrls);
+    }));
 }
 
 void vvave::rescan()

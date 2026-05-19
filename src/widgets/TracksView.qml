@@ -65,6 +65,36 @@ VVaveTable
         return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
     }
 
+    property var _favCache: ({})
+
+    function _refreshFavCache()
+    {
+        const urls = FB.Tagging.favUrls()
+        const cache = {}
+        for (let i = 0; i < urls.length; i++)
+            cache[urls[i]] = true
+        _favCache = cache
+    }
+
+    Component.onCompleted:
+    {
+        _refreshFavCache()
+        FB.Tagging.urlTagged.connect(function(url, tag) {
+            if (tag === "fav") {
+                const updated = Object.assign({}, _favCache)
+                updated[url] = true
+                _favCache = updated
+            }
+        })
+        FB.Tagging.urlTagRemoved.connect(function(tag, url) {
+            if (tag === "fav") {
+                const updated = Object.assign({}, _favCache)
+                delete updated[url]
+                _favCache = updated
+            }
+        })
+    }
+
     headBar.visible: Vvave.Vvave.sources.length > 0 && count > 0
     holder.visible: Vvave.Vvave.sources.length === 0 || count === 0
     holder.emoji: "folder-music"
@@ -242,7 +272,7 @@ VVaveTable
         topPadding: 0
         bottomPadding: 0
 
-        readonly property bool isFav: FB.Tagging.isFav(model.url)
+        readonly property bool isFav: control._favCache[model.url] === true
 
         background: Rectangle
         {
