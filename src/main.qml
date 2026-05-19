@@ -56,7 +56,15 @@ Maui.ApplicationWindow
     readonly property color focusAccentColor: Vvave.artworkAccent(
                                                   currentTrack && currentTrack.artist ? currentTrack.artist : "",
                                                   currentTrack && currentTrack.album ? currentTrack.album : "")
+    readonly property string focusAdaptiveSource: Vvave.artworkUrl(
+                                                      currentTrack && currentTrack.artist ? currentTrack.artist : "",
+                                                      currentTrack && currentTrack.album ? currentTrack.album : "")
+    readonly property bool focusAdaptiveTheme: focusView && focusAdaptiveSource.length > 0
 
+    Maui.Style.styleType: focusView
+        ? (focusAdaptiveTheme ? Maui.Style.Adaptive : Maui.Style.Dark)
+        : undefined
+    Maui.Style.adaptiveColorSchemeSource: focusAdaptiveSource
     Maui.Style.accentColor: focusView ? focusAccentColor : root.vvaveColor
 
     property QtObject tagsDialog : null
