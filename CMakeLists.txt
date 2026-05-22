@@ -36,8 +36,8 @@ endif()
 
 set(QT_MAJOR_VERSION 6)
 
-set(REQUIRED_QT_VERSION 6.5.2)
-set(REQUIRED_KF_VERSION 5.240.0)
+set(REQUIRED_QT_VERSION 6.9)
+set(REQUIRED_KF_VERSION 6.13.0)
 
 find_package(ECM ${REQUIRED_KF_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -55,7 +55,7 @@ include(FeatureSummary)
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Concurrent Qml Quick QuickControls2 Network Xml Multimedia)
 find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
 
-find_package(MauiKit4 REQUIRED COMPONENTS FileBrowsing Audio)
+find_package(MauiKit4 4.0.3 REQUIRED COMPONENTS FileBrowsing Audio)
 
 find_package(Taglib 1.4 REQUIRED)
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS DBus Widgets)
