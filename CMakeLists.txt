@@ -5,7 +5,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-set(VVAVE_VERSION 4.0.3)
+set(VVAVE_VERSION 4.0.4)
 add_compile_definitions(APP_COPYRIGHT_NOTICE="© 2019-2025 Maui Development Team")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -55,7 +55,7 @@ include(FeatureSummary)
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Concurrent Qml Quick QuickControls2 Network Xml Multimedia)
 find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
 
-find_package(MauiKit4 4.0.3 REQUIRED COMPONENTS FileBrowsing Audio)
+find_package(MauiKit4 4.0.4 REQUIRED COMPONENTS FileBrowsing Audio)
 
 find_package(Taglib 1.4 REQUIRED)
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS DBus Widgets)
