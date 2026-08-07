@@ -543,7 +543,7 @@ Maui.ApplicationWindow
         sideBar.preferredWidth: Math.min(root.width * (root.height > root.width ? 0.84 : 0.38), Maui.Style.units.gridUnit * 24)
         sideBar.minimumWidth: Maui.Style.units.gridUnit * 14
         sideBar.maximumWidth: Maui.Style.units.gridUnit * 30
-        sideBar.collapsed: root.height > root.width || root.width < Maui.Style.units.gridUnit * 42
+        sideBar.collapsed: true
         sideBar.floats: true
         sideBar.y: _sideBarView.topChromeOffset
         sideBar.height: Math.max(0, _sideBarView.height - _mainPage.footBar.height - _sideBarView.topChromeOffset - Maui.Style.space.small)

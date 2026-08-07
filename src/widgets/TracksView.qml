@@ -113,7 +113,7 @@ VVaveTable
     {
         width: parent ? parent.width : 0
         height: control.count > 0 ? control.headerHeight : 0
-        color: Qt.rgba(0.12, 0.11, 0.16, 1.0)
+        color: Maui.Theme.alternateBackgroundColor
         radius: Maui.Style.radiusV
         visible: height > 0
         z: 999
@@ -146,7 +146,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.artistColWidth
@@ -164,7 +164,7 @@ VVaveTable
                     elide: Text.ElideRight
                 }
             }
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.albumColWidth
@@ -182,7 +182,7 @@ VVaveTable
                     elide: Text.ElideRight
                 }
             }
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.yearColWidth
@@ -200,7 +200,7 @@ VVaveTable
                     elide: Text.ElideRight
                 }
             }
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.lengthColWidth
@@ -218,7 +218,7 @@ VVaveTable
                     elide: Text.ElideRight
                 }
             }
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.favColWidth
@@ -236,7 +236,7 @@ VVaveTable
                     elide: Text.ElideRight
                 }
             }
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
             Item
             {
                 Layout.preferredWidth: control.genreColWidth
@@ -276,9 +276,10 @@ VVaveTable
 
         background: Rectangle
         {
-            color: rowDelegate.isCurrentItem ? Qt.rgba(0.20, 0.19, 0.26, 0.96) : Qt.rgba(0.17, 0.16, 0.22, rowDelegate.hovered ? 0.90 : 0.72)
+            color: rowDelegate.isCurrentItem ? Maui.Theme.highlightColor : (rowDelegate.hovered ? Maui.Theme.alternateBackgroundColor : Maui.Theme.backgroundColor)
             radius: Maui.Style.radiusV
-            border.color: rowDelegate.isCurrentItem ? Maui.Theme.highlightColor : (rowDelegate.hovered ? Qt.rgba(1, 1, 1, 0.14) : Qt.rgba(1, 1, 1, 0.04))
+            border.color: rowDelegate.isCurrentItem ? Maui.Theme.highlightColor : Maui.Theme.textColor
+            opacity: rowDelegate.isCurrentItem ? 0.96 : (rowDelegate.hovered ? 0.90 : 0.72)
             border.width: rowDelegate.hovered || rowDelegate.isCurrentItem ? 1 : 0
         }
 
@@ -307,7 +308,7 @@ VVaveTable
                         implicitWidth: 38
                         implicitHeight: 38
                         radius: 6
-                        color: Qt.rgba(1, 1, 1, 0.05)
+                        color: Maui.Theme.alternateBackgroundColor
                         clip: true
 
                         Image
@@ -328,7 +329,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
@@ -347,7 +348,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
@@ -366,7 +367,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
@@ -385,7 +386,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
@@ -404,7 +405,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
@@ -420,7 +421,7 @@ VVaveTable
                 }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Qt.rgba(1,1,1,0.05) }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Maui.Theme.textColor; opacity: 0.05 }
 
             Item
             {
