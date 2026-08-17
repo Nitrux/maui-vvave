@@ -24,8 +24,6 @@ Maui.ListBrowserDelegate
     draggable: true
     iconSource: "qrc:/assets/cover.png"
 
-    template.isMask: true
-
     label1.text: control.number ? control.track + ". " + control.title :  control.title
     label2.text: control.artist + " • " + control.album
     label2.visible: control.coverArt ? !control.sameAlbum : true
