@@ -570,7 +570,25 @@ Maui.ApplicationWindow
                 }
             }
 
-            layer.enabled: true
+            layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+            layer.effect: MultiEffect
+            {
+                maskEnabled: true
+                maskThresholdMin: 0.5
+                maskSpreadAtMin: 1.0
+                maskSpreadAtMax: 0.0
+                maskThresholdMax: 1.0
+                maskSource: ShaderEffectSource
+                {
+                    sourceItem: Rectangle
+                    {
+                        width: _playlistPanel.width
+                        height: _playlistPanel.height
+                        radius: Maui.Style.radiusV
+                    }
+                }
+            }
+
             Maui.Theme.colorSet: Maui.Theme.Window
             Maui.Theme.inherit: false
 
