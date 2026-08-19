@@ -273,14 +273,31 @@ VVaveTable
         bottomPadding: 0
 
         readonly property bool isFav: control._favCache[model.url] === true
+        readonly property color foregroundColor: rowDelegate.containsPress ? rowDelegate.contrastTextColor(Maui.Theme.highlightColor) : Maui.Theme.textColor
 
         background: Rectangle
         {
-            color: rowDelegate.isCurrentItem ? Maui.Theme.highlightColor : (rowDelegate.hovered ? Maui.Theme.alternateBackgroundColor : Maui.Theme.backgroundColor)
+            color: Qt.rgba(Maui.Theme.backgroundColor.r, Maui.Theme.backgroundColor.g, Maui.Theme.backgroundColor.b, 0.72)
             radius: Maui.Style.radiusV
-            border.color: rowDelegate.isCurrentItem ? Maui.Theme.highlightColor : Maui.Theme.textColor
-            opacity: rowDelegate.isCurrentItem ? 0.96 : (rowDelegate.hovered ? 0.90 : 0.72)
-            border.width: rowDelegate.hovered || rowDelegate.isCurrentItem ? 1 : 0
+            border.color: rowDelegate.isCurrentItem || rowDelegate.hovered || rowDelegate.containsPress ? Maui.Theme.highlightColor : "transparent"
+            border.width: rowDelegate.isCurrentItem || rowDelegate.hovered || rowDelegate.containsPress ? 2 : 0
+
+            Rectangle
+            {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Maui.Theme.highlightColor
+                opacity: rowDelegate.containsPress ? 1 : (rowDelegate.hovered ? 0.25 : 0)
+
+                Behavior on opacity
+                {
+                    NumberAnimation
+                    {
+                        duration: Maui.Style.enableEffects ? Maui.Style.units.shortDuration : 0
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+            }
         }
 
         template.content: RowLayout
@@ -323,6 +340,7 @@ VVaveTable
                     {
                         Layout.fillWidth: true
                         text: model.title
+                        color: rowDelegate.foregroundColor
                         elide: Text.ElideRight
                         maximumLineCount: 1
                     }
@@ -342,6 +360,7 @@ VVaveTable
                     anchors.leftMargin: control.cellPadding
                     anchors.rightMargin: control.cellPadding
                     text: model.artist
+                    color: rowDelegate.foregroundColor
                     elide: Text.ElideRight
                     maximumLineCount: 1
                     verticalAlignment: Text.AlignVCenter
@@ -361,6 +380,7 @@ VVaveTable
                     anchors.leftMargin: control.cellPadding
                     anchors.rightMargin: control.cellPadding
                     text: model.album
+                    color: rowDelegate.foregroundColor
                     elide: Text.ElideRight
                     maximumLineCount: 1
                     verticalAlignment: Text.AlignVCenter
@@ -382,6 +402,7 @@ VVaveTable
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                     text: control.yearLabel(model.releasedate)
+                    color: rowDelegate.foregroundColor
                     elide: Text.ElideRight
                 }
             }
@@ -401,6 +422,7 @@ VVaveTable
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                     text: control.formatDuration(model.duration)
+                    color: rowDelegate.foregroundColor
                     elide: Text.ElideRight
                 }
             }
@@ -416,6 +438,7 @@ VVaveTable
                 {
                     anchors.centerIn: parent
                     icon.name: rowDelegate.isFav ? "love" : "love-outline"
+                    icon.color: rowDelegate.foregroundColor
                     onClicked: listModel.list.fav(listModel.mappedToSource(index), !rowDelegate.isFav)
                     flat: true
                 }
@@ -434,6 +457,7 @@ VVaveTable
                     anchors.leftMargin: control.cellPadding
                     anchors.rightMargin: control.cellPadding
                     text: model.genre
+                    color: rowDelegate.foregroundColor
                     elide: Text.ElideRight
                     maximumLineCount: 1
                     verticalAlignment: Text.AlignVCenter
