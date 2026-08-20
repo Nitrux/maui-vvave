@@ -279,15 +279,15 @@ VVaveTable
         {
             color: Qt.rgba(Maui.Theme.backgroundColor.r, Maui.Theme.backgroundColor.g, Maui.Theme.backgroundColor.b, 0.72)
             radius: Maui.Style.radiusV
-            border.color: rowDelegate.isCurrentItem || rowDelegate.hovered || rowDelegate.containsPress ? Maui.Theme.highlightColor : "transparent"
-            border.width: rowDelegate.isCurrentItem || rowDelegate.hovered || rowDelegate.containsPress ? 2 : 0
+            border.color: rowDelegate.isCurrentItem || rowDelegate.containsPress ? Maui.Theme.highlightColor : "transparent"
+            border.width: rowDelegate.isCurrentItem || rowDelegate.containsPress ? 1 : 0
 
             Rectangle
             {
                 anchors.fill: parent
                 radius: parent.radius
                 color: Maui.Theme.highlightColor
-                opacity: rowDelegate.containsPress ? 1 : (rowDelegate.hovered ? 0.25 : 0)
+                opacity: rowDelegate.containsPress ? 1 : (rowDelegate.isCurrentItem ? 0.25 : (rowDelegate.hovered ? 0.2 : 0))
 
                 Behavior on opacity
                 {
