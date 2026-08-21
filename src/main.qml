@@ -97,7 +97,7 @@ Maui.ApplicationWindow
     property bool sync: false
     property string lastUsedTag
 
-    readonly property bool focusView : _stackView.currentItem.objectName === "FocusView"
+    property bool focusView: settings.focusViewDefault
     property bool selectionMode : false
     property bool _forceClose: false
     property bool _outputSelectionReady: false
@@ -996,57 +996,18 @@ Maui.ApplicationWindow
                 }
             }
 
-            StackView
+            Item
             {
-                id: _stackView
+                id: _viewLayer
                 focus: true
                 anchors.fill: parent
-                initialItem: settings.focusViewDefault ? _focusViewComponent : swipeView
-                background: null
 
-            pushExit: Transition
-            {
-                ParallelAnimation
+                Maui.SwipeView
                 {
-                    PropertyAnimation
-                    {
-                        property: "y"
-                        from: 0
-                        to:  _stackView.height
-                        duration: 200
-                        easing.type: Easing.InOutCubic
-                    }
-
-                    NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 300; easing.type: Easing.InOutCubic }
-                }
-            }
-
-            pushEnter: null
-
-            popExit: null
-
-            popEnter: Transition
-            {
-                ParallelAnimation
-                {
-                    PropertyAnimation
-                    {
-                        property: "y"
-                        from: _stackView.height
-                        to: 0
-                        duration: 200
-                        easing.type: Easing.InOutCubic
-                    }
-
-                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
-                }
-            }
-
-            Maui.SwipeView
-            {
-                id: swipeView
-                maxViews: 4
-                visible: StackView.status !== StackView.Inactive
+                    id: swipeView
+                    anchors.fill: parent
+                    maxViews: 4
+                    opacity: root.focusView ? 0 : 1
                 onCurrentIndexChanged:
                 {
                 }
@@ -1216,17 +1177,28 @@ Maui.ApplicationWindow
                 }
             }
 
-            Component
-            {
-                id: _focusViewComponent
-
-                FocusView
+                Item
                 {
-                    objectName: "FocusView"
+                    id: _focusLayer
+                    anchors.fill: parent
+                    visible: root.focusView
+                    z: 1
+
+                    MouseArea
+                    {
+                        anchors.fill: parent
+                    }
+
+                    FocusView
+                    {
+                        id: _focusView
+                        anchors.fill: parent
+                        objectName: "FocusView"
+                        z: 1
+                    }
                 }
             }
         }
-    }
     }
 
     Component.onCompleted:
@@ -1337,20 +1309,11 @@ Maui.ApplicationWindow
 
     function toggleFocusView()
     {
-        if(focusView)
-        {
-            if (_stackView.depth > 1)
-                _stackView.pop()
-            else
-                _stackView.push(swipeView)
+        root.focusView = !root.focusView
 
-        }else
-        {
-            _stackView.push(_focusViewComponent)
-        }
-
-        if(_stackView.currentItem)
-            _stackView.currentItem.forceActiveFocus()
+        const currentItem = root.focusView ? _focusView : swipeView
+        if(currentItem)
+            currentItem.forceActiveFocus()
     }
 
     function toggleSidebar()
@@ -1365,8 +1328,9 @@ Maui.ApplicationWindow
 
         _sideBarView.sideBar.close()
         Qt.callLater(() => {
-            if (_stackView && _stackView.currentItem && _stackView.currentItem.forceActiveFocus)
-                _stackView.currentItem.forceActiveFocus()
+            const currentItem = root.focusView ? _focusView : swipeView
+            if (currentItem && currentItem.forceActiveFocus)
+                currentItem.forceActiveFocus()
         })
         return true
     }
@@ -1464,7 +1428,7 @@ Maui.ApplicationWindow
 
     function getGoBackFunc()
     {
-        const currentItem = _stackView ? _stackView.currentItem : null
+        const currentItem = root.focusView ? _focusView : swipeView
         if (!currentItem)
             return null
 

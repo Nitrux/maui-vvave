@@ -320,7 +320,8 @@ StackView
 
     Component.onCompleted:
     {
-        forceActiveFocus()
+        if (root.focusView)
+            forceActiveFocus()
     }
 
 }

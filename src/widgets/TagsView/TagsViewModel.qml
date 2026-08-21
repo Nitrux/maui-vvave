@@ -11,6 +11,9 @@ Maui.AltBrowser
     background: null
 
     property string currentTag: ""
+    // Freeze this initial choice on completion. Switching AltBrowser's model and
+    // delegate tree from a live width binding is unsafe during window polishing.
+    property int stableViewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
     readonly property alias list: _tagsList
 
     function applyPrimarySort(index)
@@ -35,7 +38,12 @@ Maui.AltBrowser
     Maui.Theme.inherit: false
     Maui.Controls.level : Maui.Controls.Secondary
 
-    viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
+    viewType: stableViewType
+
+    Component.onCompleted:
+    {
+        stableViewType = root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
+    }
 
     gridView.itemSize: 140
     gridView.itemHeight: 180

@@ -16,6 +16,9 @@ Maui.AltBrowser
     readonly property string primarySortRole: prefix === "album" ? "album" : "artist"
     readonly property string secondarySortRole: prefix === "album" ? "artist" : "album"
     property string pendingSearchQuery: ""
+    // Freeze this initial choice on completion. Switching AltBrowser's model and
+    // delegate tree from a live width binding is unsafe during window polishing.
+    property int stableViewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
 
 
     signal albumCoverClicked(string album, string artist)
@@ -165,7 +168,7 @@ Maui.AltBrowser
         onTriggered: applySearchFilter(pendingSearchQuery)
     }
 
-    viewType: root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
+    viewType: stableViewType
 
     gridView.itemSize: 180
     gridView.itemHeight: 180
@@ -239,7 +242,11 @@ Maui.AltBrowser
         }
     }
 
-    Component.onCompleted: syncSearchRole()
+    Component.onCompleted:
+    {
+        stableViewType = root.isWide ? Maui.AltBrowser.ViewType.Grid : Maui.AltBrowser.ViewType.List
+        syncSearchRole()
+    }
 
     listDelegate: Maui.ListBrowserDelegate
     {
