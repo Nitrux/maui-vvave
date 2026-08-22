@@ -66,6 +66,15 @@ Maui.Page
             _searchField.forceActiveFocus()
     }
 
+    function selectIndex(index)
+    {
+        if (index < 0 || !_listBrowser.flickable)
+            return
+
+        _listBrowser.flickable.setCurrentIndex(index)
+        _listBrowser.flickable.forceActiveFocus()
+    }
+
     function applyAlphabeticalSort(index)
     {
         listModel.sort = "title"
@@ -382,8 +391,7 @@ Maui.Page
 
             onClicked: (mouse) =>
                        {
-                           _listBrowser.forceActiveFocus()
-                           currentIndex = index
+                           selectIndex(index)
 
                            if(selectionMode)
                            {
@@ -400,7 +408,7 @@ Maui.Page
 
             onDoubleClicked:
             {
-                currentIndex = index
+                selectIndex(index)
 
                 if(!Maui.Handy.isTouch)
                     rowClicked(index)
@@ -435,7 +443,7 @@ Maui.Page
             target: root
 
             function onContextualPlayNext(event) {
-                if (_listBrowser.activeFocus)
+                if (_listBrowser.flickable.activeFocus)
                     Player.queueTracks([listModel.get(_listBrowser.currentIndex)])
             }
         }
@@ -443,7 +451,7 @@ Maui.Page
 
     function openItemMenu(index)
     {
-        currentIndex = index
+        selectIndex(index)
         contextMenu.index = index
         contextMenu.titleInfo = listModel.get(contextMenu.index)
         contextMenu.show()
@@ -474,7 +482,7 @@ Maui.Page
 
     function forceActiveFocus()
     {
-        _listBrowser.forceActiveFocus()
+        _listBrowser.flickable.forceActiveFocus()
     }
 
 }

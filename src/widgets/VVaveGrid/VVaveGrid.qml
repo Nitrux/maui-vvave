@@ -60,6 +60,15 @@ Maui.AltBrowser
             _searchField.forceActiveFocus()
     }
 
+    function selectIndex(index)
+    {
+        if (index < 0 || !control.currentView || !control.currentView.flickable)
+            return
+
+        control.currentView.flickable.setCurrentIndex(index)
+        control.currentView.forceActiveFocus()
+    }
+
     function artworkSourceFor(artist, album)
     {
         const safeArtist = encodeURIComponent(String(artist || ""))
@@ -199,7 +208,7 @@ Maui.AltBrowser
             const index = _albumsList.indexOfName(typingQuery)
             if(index > -1)
             {
-                control.currentIndex = _albumsModel.mappedFromSource(index)
+                control.selectIndex(_albumsModel.mappedFromSource(index))
             }
 
             typingQuery = ""
@@ -260,7 +269,7 @@ Maui.AltBrowser
 
         onClicked:
         {
-            control.currentIndex = index
+            control.selectIndex(index)
             if(Maui.Handy.singleClick)
             {
                 albumCoverClicked(model.album, model.artist)
@@ -269,7 +278,7 @@ Maui.AltBrowser
 
         onDoubleClicked:
         {
-            control.currentIndex = index
+            control.selectIndex(index)
             if(!Maui.Handy.singleClick)
             {
                 albumCoverClicked(model.album, model.artist)
@@ -308,7 +317,7 @@ Maui.AltBrowser
 
             onClicked:
             {
-                control.currentIndex = index
+                control.selectIndex(index)
                 if(Maui.Handy.singleClick)
                 {
                     albumCoverClicked(model.album, model.artist)
@@ -317,7 +326,7 @@ Maui.AltBrowser
 
             onDoubleClicked:
             {
-                control.currentIndex = index
+                control.selectIndex(index)
                 if(!Maui.Handy.singleClick)
                 {
                     albumCoverClicked(model.album, model.artist)

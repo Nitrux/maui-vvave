@@ -469,19 +469,19 @@ VVaveTable
 
         onClicked:
         {
-            currentIndex = index
+            selectIndex(index)
             rowClicked(index)
         }
 
         onDoubleClicked:
         {
-            currentIndex = index
+            selectIndex(index)
             rowClicked(index)
         }
 
         onRightClicked:
         {
-            currentIndex = index
+            selectIndex(index)
             openItemMenu(index)
         }
 
@@ -489,7 +489,7 @@ VVaveTable
         {
             if (Maui.Handy.isTouch)
             {
-                currentIndex = index
+                selectIndex(index)
                 openItemMenu(index)
             }
         }

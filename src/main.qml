@@ -1010,6 +1010,7 @@ Maui.ApplicationWindow
                     opacity: root.focusView ? 0 : 1
                 onCurrentIndexChanged:
                 {
+                    scheduleCurrentViewFocus()
                 }
 
                 headerMargins: Maui.Style.contentMargins
@@ -1305,15 +1306,25 @@ Maui.ApplicationWindow
         root._outputSelectionReady = true
 
         Vvave.fetchArtwork = settings.fetchArtwork
+        scheduleCurrentViewFocus()
+    }
+
+    function focusCurrentView()
+    {
+        const currentItem = root.focusView ? _focusView : (swipeView ? swipeView.currentItem : null)
+        if (currentItem && currentItem.forceActiveFocus)
+            currentItem.forceActiveFocus()
+    }
+
+    function scheduleCurrentViewFocus()
+    {
+        Qt.callLater(() => focusCurrentView())
     }
 
     function toggleFocusView()
     {
         root.focusView = !root.focusView
-
-        const currentItem = root.focusView ? _focusView : swipeView
-        if(currentItem)
-            currentItem.forceActiveFocus()
+        scheduleCurrentViewFocus()
     }
 
     function toggleSidebar()
@@ -1328,9 +1339,7 @@ Maui.ApplicationWindow
 
         _sideBarView.sideBar.close()
         Qt.callLater(() => {
-            const currentItem = root.focusView ? _focusView : swipeView
-            if (currentItem && currentItem.forceActiveFocus)
-                currentItem.forceActiveFocus()
+            scheduleCurrentViewFocus()
         })
         return true
     }
@@ -1343,6 +1352,7 @@ Maui.ApplicationWindow
         }
 
         swipeView.currentIndex = index
+        scheduleCurrentViewFocus()
     }
 
     function openShortcutsDialog()
