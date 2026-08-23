@@ -65,7 +65,7 @@ Maui.AltBrowser
         if (index < 0 || !control.currentView || !control.currentView.flickable)
             return
 
-        control.currentView.flickable.setCurrentIndex(index)
+        control.currentView.flickable.currentIndex = index
         control.currentView.forceActiveFocus()
     }
 

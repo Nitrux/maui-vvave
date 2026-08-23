@@ -71,7 +71,7 @@ Maui.Page
         if (index < 0 || !_listBrowser.flickable)
             return
 
-        _listBrowser.flickable.setCurrentIndex(index)
+        _listBrowser.flickable.currentIndex = index
         _listBrowser.flickable.forceActiveFocus()
     }
 
