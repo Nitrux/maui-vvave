@@ -941,6 +941,7 @@ Maui.Page
                     label1.text: model.album ? model.album : model.artist
                     label2.text: model.album && model.artist ? model.artist : ""
                     iconSource: "qrc:/assets/cover.svg"
+                    iconSizeHint: Maui.Style.iconSizes.huge
                     imageSource: control.artworkSourceFor(model.artist, model.album)
                     maskRadius: Maui.Style.radiusV
                     template.labelsVisible: true

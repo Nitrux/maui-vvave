@@ -318,9 +318,7 @@ VVaveTable
 
                         Maui.Icon
                         {
-                            anchors.centerIn: parent
-                            width: parent.width * 0.55
-                            height: width
+                            anchors.fill: parent
                             source: "qrc:/assets/cover.svg"
                             visible: _trackArtwork.status !== Image.Ready || _trackArtwork.paintedWidth <= 0
                         }

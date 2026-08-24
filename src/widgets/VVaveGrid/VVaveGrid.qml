@@ -263,7 +263,8 @@ Maui.AltBrowser
 
         label1.text: model.album ? model.album : model.artist
         label2.text: model.artist && model.album ? model.artist : ""
-        iconSource: control.prefix === "album" ? "" : "folder-music"
+        iconSource: "qrc:/assets/cover.svg"
+        iconSizeHint: Maui.Style.iconSizes.large
         imageSource: artworkSourceFor(model.artist, model.album)
         maskRadius: Maui.Style.radiusV
 
@@ -309,7 +310,8 @@ Maui.AltBrowser
 
             imageSource: artworkSourceFor(model.artist, model.album)
 
-            iconSource: control.prefix === "album" ? "" : "view-media-artist"
+            iconSource: "qrc:/assets/cover.svg"
+            iconSizeHint: Maui.Style.iconSizes.huge
 
             template.labelsVisible: settings.showTitles
             template.alignment: Qt.AlignHCenter

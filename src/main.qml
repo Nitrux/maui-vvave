@@ -706,14 +706,11 @@ Maui.ApplicationWindow
             ToolButton
             {
                 id: _footerVolumeButton
-                text: volumeGlyph(player.volume || 0)
-                display: AbstractButton.TextOnly
+                icon.name: volumeIcon(player.volume || 0)
+                display: AbstractButton.IconOnly
                 padding: 0
                 implicitWidth: Maui.Style.iconSizes.medium
                 implicitHeight: Maui.Style.iconSizes.medium
-                font.family: "Font Awesome 6 Free Solid"
-                font.pixelSize: Maui.Style.fontSizes.small
-                font.weight: Font.Black
                 onClicked:
                 {
                     if (!_mainPage.compactVolumeControl) {
@@ -1243,13 +1240,13 @@ Maui.ApplicationWindow
             setFooterVolume(_lastAudibleVolume > 0 ? _lastAudibleVolume : 100)
     }
 
-    function volumeGlyph(volume)
+    function volumeIcon(volume)
     {
         if (volume <= 0)
-            return "\uf6a9"
+            return "audio-volume-muted"
         if (volume < 50)
-            return "\uf027"
-        return "\uf028"
+            return "audio-volume-low"
+        return "audio-volume-high"
     }
 
     function setSleepTimer(option)
