@@ -12,7 +12,6 @@ lastfm::lastfm()
 
 lastfm::~lastfm()
 {
-    qDebug() << "DELETING LASTFM INSTANCE";
 }
 
 void lastfm::set(const PULPO::REQUEST &request)
@@ -60,8 +59,6 @@ void lastfm::set(const PULPO::REQUEST &request)
     }
     }
 
-    qDebug() << "[lastfm service]: " << url;
-
     this->retrieve(url);
 }
 
@@ -71,12 +68,10 @@ void lastfm::parseArtist(const QByteArray &array)
     QDomDocument doc;
 
     if (!doc.setContent(xmlData)) {
-        qDebug() << "LASTFM XML FAILED 1" << this->request.track;
         ERROR(this->request);
     }
 
     if (doc.documentElement().toElement().attributes().namedItem("status").nodeValue() != "ok") {
-        qDebug() << "LASTFM XML FAILED 2" << this->request.track;
         ERROR(this->request);
     }
 
@@ -106,12 +101,10 @@ void lastfm::parseAlbum(const QByteArray &array)
     QDomDocument doc;
 
     if (!doc.setContent(xmlData)) {
-        qDebug() << "LASTFM XML FAILED 1" << this->request.track;
         ERROR(this->request);
     }
 
     if (doc.documentElement().toElement().attributes().namedItem("status").nodeValue() != "ok") {
-        qDebug() << "LASTFM XML FAILED 2" << this->request.track;
         ERROR(this->request);
     }
 
@@ -145,7 +138,6 @@ void lastfm::parseAlbum(const QByteArray &array)
             if (n.nodeName() == "wiki") {
                 if (this->request.info.contains(INFO::WIKI)) {
                     const auto albumWiki = n.childNodes().item(1).toElement().text();
-                    // qDebug()<<"Fetching AlbumWiki LastFm[]";
 
                     this->responses << PULPO::RESPONSE{PULPO_CONTEXT::WIKI, albumWiki};
 

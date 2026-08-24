@@ -297,6 +297,20 @@ Maui.Page
         }
     }
 
+    Component
+    {
+        id: _sectionDelegate
+
+        Maui.LabelDelegate
+        {
+            isSection: true
+            width: ListView.view.width
+            text: control.listModel.sort === "adddate" || control.listModel.sort === "releasedate"
+                  ? Maui.Handy.formatDate(Date(section), "MM/dd/yyyy")
+                  : String(section)
+        }
+    }
+
     Maui.ListBrowser
     {
         id: _listBrowser
@@ -327,14 +341,7 @@ Maui.Page
 
         section.property: control.group ? control.listModel.sort : ""
         section.criteria: control.listModel.sort === "title" ?  ViewSection.FirstCharacter : ViewSection.FullString
-        section.delegate: Maui.LabelDelegate
-        {
-            isSection: true
-            width: ListView.view.width
-            //            iconSource: "view-media-artist"
-            text: control.listModel.sort === "adddate" || control.listModel.sort === "releasedate" ? Maui.Handy.formatDate(Date(section), "MM/dd/yyyy") : String(section)
-
-        }
+        section.delegate: control.group ? _sectionDelegate : null
 
         model: Maui.BaseModel
         {

@@ -18,7 +18,6 @@ spotify::spotify()
 
 void spotify::set(const PULPO::REQUEST &request)
 {
-    qDebug() << "Setting the spotify request" << request.track;
     this->request = request;
 
     if (!scopePass()) {
@@ -65,7 +64,6 @@ void spotify::set(const PULPO::REQUEST &request)
     const QString clientId = qEnvironmentVariable(CLIENT_ID_ENV);
     const QString clientSecret = qEnvironmentVariable(CLIENT_SECRET_ENV);
     if (clientId.isEmpty() || clientSecret.isEmpty()) {
-        qWarning() << "[spotify service] missing credentials. Set" << CLIENT_ID_ENV << "and" << CLIENT_SECRET_ENV;
         ERROR(this->request)
     }
 
@@ -82,7 +80,6 @@ void spotify::set(const PULPO::REQUEST &request)
 
     connect(reply, &QNetworkReply::finished, [this, reply, url]() {
         if (reply->error()) {
-            qDebug() << reply->error();
             ERROR(this->request)
         }
 
@@ -90,11 +87,8 @@ void spotify::set(const PULPO::REQUEST &request)
         auto data = QJsonDocument::fromJson(response).object().toVariantMap();
         auto token = data["access_token"].toString();
         if (token.isEmpty()) {
-            qWarning() << "[spotify service] token request returned empty access token";
             ERROR(this->request)
         }
-
-        qDebug() << "[spotify service] authenticated request:" << url;
 
         this->retrieve(url, {{"Authorization", "Bearer " + token}});
 
@@ -104,7 +98,6 @@ void spotify::set(const PULPO::REQUEST &request)
 
 void spotify::parseArtist(const QByteArray &array)
 {
-    qDebug() << "trying to parse artists form spotify array";
     QJsonParseError jsonParseError;
     QJsonDocument jsonResponse = QJsonDocument::fromJson(static_cast<QString>(array).toUtf8(), &jsonParseError);
 

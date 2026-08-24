@@ -52,18 +52,6 @@ int artworkCostKb(const QImage &img)
     return static_cast<int>(std::max(qint64(1), img.sizeInBytes() / 1024));
 }
 
-QImage fallbackArtwork()
-{
-    static QImage fallback(QStringLiteral(":/assets/cover.png"));
-    if (!fallback.isNull()) {
-        return fallback;
-    }
-
-    QImage transparent(1, 1, QImage::Format_ARGB32_Premultiplied);
-    transparent.fill(Qt::transparent);
-    return transparent;
-}
-
 QString normalizedArtworkField(const QString &value)
 {
     return value.trimmed().toCaseFolded();
@@ -187,11 +175,10 @@ void completePendingResponses(const QString &cacheKey, const QImage &image, bool
     }
 
     const auto pending = s_pendingResponses.take(cacheKey);
-    const QImage finalImage = image.isNull() ? fallbackArtwork() : image;
-
+    // Missing artwork completes as an image error so Maui.IconItem reveals the delegate iconSource.
     for (const auto &response : pending) {
         if (response) {
-            response->complete(finalImage);
+            response->complete(image);
         }
     }
 
@@ -279,12 +266,10 @@ void AsyncImageResponse::finishWithImage(const QImage &image)
 
     if (!image.isNull()) {
         m_image = image;
+        m_errorString.clear();
     } else {
-        m_image = QImage(":/assets/cover.png");
-        if (m_image.isNull()) {
-            m_image = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
-            m_image.fill(Qt::transparent);
-        }
+        m_image = QImage();
+        m_errorString = QStringLiteral("Artwork unavailable");
     }
     m_completed = true;
     Q_EMIT this->finished();
@@ -301,12 +286,12 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
 {
     const auto request = parseArtworkRequest(id);
     if (!request.valid) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (request.unknownMetadata) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
@@ -323,7 +308,7 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
         const auto cachedImage = QImage(cachedPath);
         if (cachedImage.isNull()) {
             removeInvalidArtworkFile(cachedPath);
-            finishWithImage(fallbackArtwork());
+            finishWithImage(QImage());
         } else {
             s_sessionArtworkCache.insert(request.cacheKey, new QImage(cachedImage), artworkCostKb(cachedImage));
             finishWithImage(cachedImage);
@@ -332,17 +317,17 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     }
 
     if (!vvave::instance()->fetchArtwork()) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (shouldDeferOnlineFetch(m_requestedSize)) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (shouldSkipFetchForRecentMiss(request.cacheKey)) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
@@ -357,18 +342,18 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     processArtworkQueue();
 }
 
+QString AsyncImageResponse::errorString() const
+{
+    return m_errorString;
+}
+
 QQuickTextureFactory *AsyncImageResponse::textureFactory() const
 {
-    if (!m_image.isNull()) {
-        return QQuickTextureFactory::textureFactoryForImage(m_image);
+    if (m_image.isNull()) {
+        return nullptr;
     }
 
-    QImage fallback(":/assets/cover.png");
-    if (fallback.isNull()) {
-        fallback = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
-        fallback.fill(Qt::transparent);
-    }
-    return QQuickTextureFactory::textureFactoryForImage(fallback);
+    return QQuickTextureFactory::textureFactoryForImage(m_image);
 }
 
 QQuickImageResponse *ArtworkProvider::requestImageResponse(const QString &id, const QSize &requestedSize)
@@ -412,7 +397,7 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
                             return;
                         }
                         Q_UNUSED(message)
-                        Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
+                        Q_EMIT self->artworkReady(QUrl());
                     });
 
                     const auto format = res.value.toUrl().fileName().endsWith(".png") ? ".png" : ".jpg";
@@ -427,14 +412,14 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
         }
 
         if (!requestedDownload) {
-            Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
+            Q_EMIT self->artworkReady(QUrl());
         }
     };
 
     auto pulpo = new Pulpo;
     QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
     QObject::connect(pulpo, &Pulpo::error, this, [this, pulpo]() {
-        Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
+        Q_EMIT this->artworkReady(QUrl());
         pulpo->deleteLater();
     });
 

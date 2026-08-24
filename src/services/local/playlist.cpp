@@ -364,10 +364,14 @@ void Playlist::setModel(TracksModel *model)
     if (m_model == model)
         return;
 
-    m_model->disconnect();
-    m_model = model;
+    if (m_model) {
+        QObject::disconnect(m_model, nullptr, this, nullptr);
+    }
 
-    connect(m_model, &TracksModel::countChanged, this, &Playlist::canPlayChanged);
+    m_model = model;
+    if (m_model) {
+        connect(m_model, &TracksModel::countChanged, this, &Playlist::canPlayChanged);
+    }
     Q_EMIT modelChanged(m_model);
 }
 

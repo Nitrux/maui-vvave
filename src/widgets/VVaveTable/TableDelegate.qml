@@ -22,7 +22,7 @@ Maui.ListBrowserDelegate
 
     isCurrentItem: ListView.isCurrentItem || checked
     draggable: true
-    iconSource: "qrc:/assets/cover.png"
+    iconSource: "qrc:/assets/cover.svg"
 
     label1.text: control.number ? control.track + ". " + control.title :  control.title
     label2.text: control.artist + " • " + control.album

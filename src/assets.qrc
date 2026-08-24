@@ -1,12 +1,9 @@
 <RCC>
     <qresource prefix="/">
-        <file>assets/cover.png</file>
         <file>utils/Player.js</file>
+        <file>assets/cover.svg</file>
         <file>db/Queries.js</file>
         <file>assets/vvave.png</file>
         <file>assets/vvave.svg</file>
-        <file>assets/view-media-track.svg</file>
-        <file>assets/media-album-track.svg</file>
-        <file>assets/playing.gif</file>
     </qresource>
 </RCC>

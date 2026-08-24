@@ -8,19 +8,44 @@ Maui.InfoDialog
 {
     id: control
 
-    property var data : control.model.get(control.index)
-    property int index : -1 //index of the item in the model TracksModel
-
-    property Maui.BaseModel model
-
-    // title: i18n("Edit")
+    property var data: null
+    property int index: -1 // index of the item in the model TracksModel
+    property var model: null
 
     signal edited(var data, int index)
+
+    function loadData()
+    {
+        if (data)
+        {
+            data = Object.assign({}, data)
+            return
+        }
+
+        if (!model || typeof model.get !== "function" || index < 0 || index >= Number(model.count || 0))
+        {
+            data = null
+            return
+        }
+
+        const item = model.get(index)
+        data = item ? Object.assign({}, item) : null
+    }
+
+    Component.onCompleted: loadData()
+    onModelChanged: loadData()
+    onIndexChanged: loadData()
 
     standardButtons: Dialog.Ok | Dialog.Cancel
 
     onAccepted:
     {
+        if (!control.data)
+        {
+            control.close()
+            return
+        }
+
         control.data.title = _titleField.text;
         control.data.artist = _artistField.text;
         control.data.album = _albumField.text;
@@ -48,7 +73,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _titleField
-                text: control.data.title
+                text: control.data ? control.data.title : ""
                 Layout.fillWidth: true
             }
         }
@@ -60,7 +85,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _artistField
-                text: control.data.artist
+                text: control.data ? control.data.artist : ""
                 Layout.fillWidth: true
 
             }
@@ -73,7 +98,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _albumField
-                text: control.data.album
+                text: control.data ? control.data.album : ""
                 Layout.fillWidth: true
 
             }
@@ -86,7 +111,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _trackField
-                text: control.data.track
+                text: control.data ? control.data.track : ""
                 Layout.fillWidth: true
 
             }
@@ -99,7 +124,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _genreField
-                text: control.data.genre
+                text: control.data ? control.data.genre : ""
                 Layout.fillWidth: true
 
             }
@@ -112,7 +137,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _yearField
-                text: control.data.releasedate
+                text: control.data ? control.data.releasedate : ""
                 Layout.fillWidth: true
 
             }
@@ -125,7 +150,7 @@ Maui.InfoDialog
             TextField
             {
                 id: _commentField
-                text: control.data.comment
+                text: control.data ? control.data.comment : ""
                 Layout.fillWidth: true
 
             }

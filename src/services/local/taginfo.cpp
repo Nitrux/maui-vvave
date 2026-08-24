@@ -39,36 +39,52 @@ TagInfo::~TagInfo()
     delete this->file;
 }
 
-bool TagInfo::isNull()
+bool TagInfo::isNull() const
 {
-    return this->file->isNull();
+    return !this->file || this->file->isNull() || !this->file->tag();
 }
 
 QString TagInfo::getAlbum() const
 {
+    if (isNull()) {
+        return SLANG[W::UNKNOWN];
+    }
+
     const auto value = QString::fromStdWString(file->tag()->album().toWString());
     return !value.isEmpty() ? value : SLANG[W::UNKNOWN];
 }
 
 QString TagInfo::getTitle() const
 {
+    if (isNull()) {
+        return fileName();
+    }
+
     const auto value = QString::fromStdWString(file->tag()->title().toWString());
     return !value.isEmpty() ? value : fileName();
 }
 
 QString TagInfo::getArtist() const
 {
+    if (isNull()) {
+        return SLANG[W::UNKNOWN];
+    }
+
     const auto value = QString::fromStdWString(file->tag()->artist().toWString());
     return !value.isEmpty() ? value : SLANG[W::UNKNOWN];
 }
 
 int TagInfo::getTrack() const
 {
-    return static_cast<signed int>(file->tag()->track());
+    return isNull() ? 0 : static_cast<signed int>(file->tag()->track());
 }
 
 QString TagInfo::getGenre() const
 {
+    if (isNull()) {
+        return SLANG[W::UNKNOWN];
+    }
+
     const auto value = QString::fromStdWString(file->tag()->genre().toWString());
     return !value.isEmpty() ? value : SLANG[W::UNKNOWN];
 }
@@ -80,7 +96,7 @@ QString TagInfo::fileName() const
 
 uint TagInfo::getYear() const
 {
-    return file->tag()->year();
+    return isNull() ? 0 : file->tag()->year();
 }
 
 void TagInfo::setFile(const QString &url)
@@ -99,6 +115,10 @@ void TagInfo::setFile(const QString &url)
 
 int TagInfo::getDuration() const
 {
+    if (isNull()) {
+        return 0;
+    }
+
     const auto properties = file->audioProperties();
     if (!properties)
         return 0;
@@ -112,48 +132,80 @@ int TagInfo::getDuration() const
 
 QString TagInfo::getComment() const
 {
+    if (isNull()) {
+        return SLANG[W::UNKNOWN];
+    }
+
     const auto value = QString::fromStdWString(file->tag()->comment().toWString());
     return !value.isEmpty() ? value : SLANG[W::UNKNOWN];
 }
 
 void TagInfo::setComment(const QString &comment)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setComment(comment.toStdString());
     this->file->save();
 }
 
 void TagInfo::setAlbum(const QString &album)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setAlbum(album.toStdString());
     this->file->save();
 }
 
 void TagInfo::setTitle(const QString &title)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setTitle(title.toStdString());
     this->file->save();
 }
 
 void TagInfo::setTrack(const int &track)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setTrack(static_cast<unsigned int>(track));
     this->file->save();
 }
 
 void TagInfo::setYear(const int &year)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setYear(static_cast<unsigned int>(year));
     this->file->save();
 }
 
 void TagInfo::setArtist(const QString &artist)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setArtist(artist.toStdString());
     this->file->save();
 }
 
 void TagInfo::setGenre(const QString &genre)
 {
+    if (isNull()) {
+        return;
+    }
+
     this->file->tag()->setGenre(genre.toStdString());
     this->file->save();
 }

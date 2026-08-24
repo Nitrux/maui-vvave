@@ -15,7 +15,7 @@ public:
     TagInfo(QObject *parent = nullptr);
 
     ~TagInfo();
-    bool isNull();
+    bool isNull() const;
     QString getAlbum() const;
     QString getTitle() const;
     QString getArtist() const;

@@ -3,6 +3,8 @@
 #include "services/local/metadataeditor.h"
 #include "vvave.h"
 
+#include <QUrl>
+
 #include <MauiKit4/FileBrowsing/tagging.h>
 
 TracksModel::TracksModel(QObject *parent)
@@ -248,11 +250,18 @@ bool TracksModel::update(const QVariantMap &data, const int &index)
 
 void TracksModel::updateMetadata(const QVariantMap &data, const int &index)
 {
-    this->update(data, index);
+    if (index < 0 || index >= this->list.size() || !this->update(data, index)) {
+        return;
+    }
+
     const auto model = FMH::toModel(data);
+    const QUrl url(model[FMH::MODEL_KEY::URL]);
+    if (!url.isLocalFile() || url.toLocalFile().isEmpty()) {
+        return;
+    }
 
     MetadataEditor editor;
-    editor.setUrl(QUrl(model[FMH::MODEL_KEY::URL]));
+    editor.setUrl(url);
     editor.setTitle(model[FMH::MODEL_KEY::TITLE]);
     editor.setArtist(model[FMH::MODEL_KEY::ARTIST]);
     editor.setAlbum(model[FMH::MODEL_KEY::ALBUM]);

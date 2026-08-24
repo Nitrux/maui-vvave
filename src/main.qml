@@ -13,7 +13,6 @@ import org.mauikit.filebrowsing  as FB
 import org.maui.vvave
 
 import "widgets"
-import "widgets/TagsView"
 import "widgets/MainPlaylist"
 import "widgets/SettingsView"
 
@@ -119,58 +118,26 @@ Maui.ApplicationWindow
     onFocusViewChanged:
     {
         setAndroidStatusBarColor()
+        scheduleCurrentViewFocus()
     }
 
     function currentCategoryName() : string
     {
-        switch (swipeView ? swipeView.currentIndex : -1)
-        {
-        case viewsIndex.tracks: return "songs"
-        case viewsIndex.albums: return "albums"
-        case viewsIndex.artists: return "artists"
-        case viewsIndex.playlists: return "tags"
-        default: return "unknown"
-        }
+        return libraryView ? libraryView.categoryName : "unknown"
     }
 
     function resolveCurrentCategoryView() : Item
     {
-        if (!swipeView)
-            return null
-
-        switch (swipeView.currentIndex)
-        {
-        case viewsIndex.tracks:
-            return _tracksView
-        case viewsIndex.albums:
-            return _albumsView
-        case viewsIndex.artists:
-            return _artistsView
-        case viewsIndex.playlists:
-            return _tagsView
-        default:
-            return null
-        }
+        return libraryView ? libraryView.currentItem : null
     }
 
     function focusCurrentSearch()
     {
         if (focusView)
-            toggleFocusView()
+            root.focusView = false
 
-        const view = resolveCurrentCategoryView()
-        if (!view)
-            return
-
-        const target = view.currentItem ? view.currentItem : view
-        if (target && target.focusSearch)
-        {
-            target.focusSearch()
-            return
-        }
-
-        if (view.focusSearch)
-            view.focusSearch()
+        if (libraryView)
+            libraryView.focusSearch()
     }
 
     Loader
@@ -394,7 +361,7 @@ Maui.ApplicationWindow
 
                 case "eop":
                 {
-                    if(currentTrackIndex === mainPlaylist.listView.count-1)
+                    if(currentTrackIndex === mainPlaylist.listModel.list.count - 1)
                     {
                         Player.stop();
                         if(settings.closeAfterSleep)
@@ -539,7 +506,7 @@ Maui.ApplicationWindow
         anchors.fill: parent
         background: null
         Maui.Theme.colorSet: Maui.Theme.View
-        readonly property real topChromeOffset: (swipeView ? swipeView.headBar.height : 0) + Maui.Style.space.small
+        readonly property real topChromeOffset: (libraryView ? libraryView.headBar.height : 0) + Maui.Style.space.small
         sideBar.preferredWidth: Math.min(root.width * (root.height > root.width ? 0.84 : 0.38), Maui.Style.units.gridUnit * 24)
         sideBar.minimumWidth: Maui.Style.units.gridUnit * 14
         sideBar.maximumWidth: Maui.Style.units.gridUnit * 30
@@ -996,115 +963,15 @@ Maui.ApplicationWindow
                 }
             }
 
-            Item
+            LibraryView
             {
-                id: _viewLayer
-                focus: true
+                id: libraryView
                 anchors.fill: parent
+                focusMode: root.focusView
+                sidebarOpen: _sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0
+                menuComponent: _mainMenuComponent
 
-                Maui.SwipeView
-                {
-                    id: swipeView
-                    anchors.fill: parent
-                    maxViews: 4
-                    opacity: root.focusView ? 0 : 1
-                onCurrentIndexChanged:
-                {
-                    scheduleCurrentViewFocus()
-                }
-
-                headerMargins: Maui.Style.contentMargins
-                footerMargins: headerMargins
-
-                floatingFooter: true
-                flickable:
-                {
-                    const current = swipeView.currentItem
-                    if (!current)
-                        return null
-
-                    if (current.flickable)
-                        return current.flickable
-
-                    return current.item ? current.item.flickable : null
-                }
-                altHeader: Maui.Handy.isMobile
-                Maui.Controls.showCSD: true
-                background: null
-
-                headBar.forceCenterMiddleContent: true
-                headBar.middleContent: [
-                    RowLayout
-                    {
-                        spacing: Maui.Style.space.small
-                        Layout.alignment: Qt.AlignCenter
-
-                        ToolButton
-                        {
-                            text: i18n("Songs")
-                            display: AbstractButton.IconOnly
-                            icon.name: "view-media-track"
-                            onClicked: showBrowserCategory(viewsIndex.tracks)
-                        }
-
-                        ToolButton
-                        {
-                            text: i18n("Albums")
-                            display: AbstractButton.IconOnly
-                            icon.name: "view-media-album-cover"
-                            onClicked: showBrowserCategory(viewsIndex.albums)
-                        }
-
-                        ToolButton
-                        {
-                            text: i18n("Artists")
-                            display: AbstractButton.IconOnly
-                            icon.name: "view-media-artist"
-                            onClicked: showBrowserCategory(viewsIndex.artists)
-                        }
-
-                        ToolButton
-                        {
-                            text: i18n("Tags")
-                            display: AbstractButton.IconOnly
-                            icon.name: "tag"
-                            onClicked: showBrowserCategory(viewsIndex.playlists)
-                        }
-                    }
-                ]
-                headBar.leftContent: [
-                    ToolButton
-                    {
-                        text: i18n("Toggle Sidebar")
-                        display: AbstractButton.IconOnly
-                        icon.name: (_sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0) ? "sidebar-collapse" : "sidebar-expand"
-                        checkable: true
-                        checked: _sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Toggle sidebar")
-                        onClicked: toggleSidebar()
-                    },
-
-                    ToolSeparator
-                    {
-                        bottomPadding: 10
-                        topPadding: 10
-                    }
-
-                ]
-                headBar.rightContent: [
-                    ToolSeparator
-                    {
-                        bottomPadding: 10
-                        topPadding: 10
-                    },
-
-                    Loader
-                    {
-                        asynchronous: true
-                        sourceComponent: _mainMenuComponent
-                    }
-                ]
+                onToggleSidebarRequested: root.toggleSidebar()
 
                 footer: SelectionBar
                 {
@@ -1112,7 +979,7 @@ Maui.ApplicationWindow
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: parent ? Math.min(parent.width - (Maui.Style.space.medium * 2), implicitWidth) : implicitWidth
 
-                    maxListHeight: swipeView.height - Maui.Style.space.medium
+                    maxListHeight: libraryView.height - Maui.Style.space.medium
                     display: ToolButton.IconOnly
 
                     onExitClicked:
@@ -1123,79 +990,8 @@ Maui.ApplicationWindow
 
                     onVisibleChanged:
                     {
-                        if(!visible)
-                        {
+                        if (!visible)
                             root.selectionMode = false
-                        }
-                    }
-                }
-
-                TracksView
-                {
-                    id: _tracksView
-                    list.autoPopulate: swipeView.currentIndex === viewsIndex.tracks
-                }
-
-                AlbumsView
-                {
-                    id: _albumsView
-                    holder.title : i18n("No Albums!")
-                    holder.body: i18n("Add new music sources")
-                    list.query: Albums.ALBUMS
-                    list.autoPopulate: swipeView.currentIndex === viewsIndex.albums
-                }
-
-                AlbumsView
-                {
-                    id: _artistsView
-                    holder.title : i18n("No Artists!")
-                    holder.body: i18n("Add new music sources")
-                    list.query : Albums.ARTISTS
-                    list.autoPopulate: swipeView.currentIndex === viewsIndex.artists
-                }
-
-                TagsView
-                {
-                    id: _tagsView
-                }
-
-                data: Loader
-                {
-                    width: parent.width
-                    anchors.bottom: parent.bottom
-                    active: false
-                    visible: active
-                    sourceComponent: Maui.ProgressIndicator {}
-                }
-
-                function getGoBackFunc()
-                {
-                    if (!currentItem)
-                        return null
-
-                    const viewItem = currentItem.item ? currentItem.item : currentItem
-                    return (viewItem && ('getGoBackFunc' in viewItem)) ? viewItem.getGoBackFunc() : null
-                }
-            }
-
-                Item
-                {
-                    id: _focusLayer
-                    anchors.fill: parent
-                    visible: root.focusView
-                    z: 1
-
-                    MouseArea
-                    {
-                        anchors.fill: parent
-                    }
-
-                    FocusView
-                    {
-                        id: _focusView
-                        anchors.fill: parent
-                        objectName: "FocusView"
-                        z: 1
                     }
                 }
             }
@@ -1311,9 +1107,8 @@ Maui.ApplicationWindow
 
     function focusCurrentView()
     {
-        const currentItem = root.focusView ? _focusView : (swipeView ? swipeView.currentItem : null)
-        if (currentItem && currentItem.forceActiveFocus)
-            currentItem.forceActiveFocus()
+        if (libraryView)
+            libraryView.forceActiveFocus()
     }
 
     function scheduleCurrentViewFocus()
@@ -1346,12 +1141,10 @@ Maui.ApplicationWindow
 
     function showBrowserCategory(index)
     {
-        if(root.focusView)
-        {
-            toggleFocusView()
-        }
+        if (root.focusView)
+            root.focusView = false
 
-        swipeView.currentIndex = index
+        libraryView.showCategory(index)
         scheduleCurrentViewFocus()
     }
 
@@ -1369,35 +1162,26 @@ Maui.ApplicationWindow
 
     function goToAlbum(artist, album)
     {
-        if(root.focusView)
-        {
-            toggleFocusView()
-        }
+        if (root.focusView)
+            root.focusView = false
 
-        swipeView.currentIndex = viewsIndex.albums
-        _albumsView.populateTable(album, artist)
+        libraryView.openAlbum(album, artist)
     }
 
     function goToArtist(artist)
     {
-        if(root.focusView)
-        {
-            toggleFocusView()
-        }
+        if (root.focusView)
+            root.focusView = false
 
-        swipeView.currentIndex = viewsIndex.artists
-        _artistsView.populateTable(undefined, artist)
+        libraryView.openArtistTracks(artist)
     }
 
     function goToTag(tag)
     {
-        if(root.focusView)
-        {
-            toggleFocusView()
-        }
+        if (root.focusView)
+            root.focusView = false
 
-        swipeView.currentIndex = viewsIndex.playlists
-        _tagsView.populate(tag)
+        libraryView.openTag(tag)
     }
 
     function tagUrls(urls)
@@ -1438,11 +1222,7 @@ Maui.ApplicationWindow
 
     function getGoBackFunc()
     {
-        const currentItem = root.focusView ? _focusView : swipeView
-        if (!currentItem)
-            return null
-
-        return ('getGoBackFunc' in currentItem) ? currentItem.getGoBackFunc() : null
+        return libraryView ? libraryView.getGoBackFunc() : null
     }
 
     function setFooterVolume(value)

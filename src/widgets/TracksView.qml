@@ -57,10 +57,10 @@ VVaveTable
         const albumName = String(album || "").trim()
 
         if (artistName.length === 0 || albumName.length === 0)
-            return "qrc:/assets/cover.png"
+            return ""
 
         if (artistName.toUpperCase() === "UNKNOWN" || albumName.toUpperCase() === "UNKNOWN")
-            return "qrc:/assets/cover.png"
+            return ""
 
         return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
     }
@@ -310,9 +310,19 @@ VVaveTable
 
                         Image
                         {
+                            id: _trackArtwork
                             anchors.fill: parent
                             source: control.artworkSourceFor(model.artist, model.album)
                             fillMode: Image.PreserveAspectCrop
+                        }
+
+                        Maui.Icon
+                        {
+                            anchors.centerIn: parent
+                            width: parent.width * 0.55
+                            height: width
+                            source: "qrc:/assets/cover.svg"
+                            visible: _trackArtwork.status !== Image.Ready || _trackArtwork.paintedWidth <= 0
                         }
                     }
 

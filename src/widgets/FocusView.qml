@@ -28,13 +28,16 @@ StackView
         const artistName = String(artist || "").trim()
         const albumName = String(album || "").trim()
 
-        if (artistName.length > 0 && albumName.length > 0)
+        const artistKnown = artistName.length > 0 && artistName.toUpperCase() !== "UNKNOWN"
+        const albumKnown = albumName.length > 0 && albumName.toUpperCase() !== "UNKNOWN"
+
+        if (artistKnown && albumKnown)
             return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
 
-        if (artistName.length > 0)
+        if (artistKnown)
             return "image://artwork/artist:" + encodeURIComponent(artistName)
 
-        return "qrc:/assets/cover.png"
+        return ""
     }
 
     background: null
@@ -85,7 +88,7 @@ StackView
                 visible: mainPlaylist.table.count === 0
                 Maui.Theme.colorSet: Maui.Theme.Window
                 Maui.Theme.inherit: false
-                emoji: "qrc:/assets/view-media-track.svg"
+                emoji: "qrc:/assets/cover.svg"
                 title : i18n("Nothing to play!")
                 body: i18n("Start putting together your playlist.")
             }
@@ -263,6 +266,15 @@ StackView
                                         }
                                     }
                                 }
+                            }
+
+                            Maui.Icon
+                            {
+                                anchors.centerIn: parent
+                                width: _image.width * 0.45
+                                height: width
+                                source: "qrc:/assets/cover.svg"
+                                visible: _image.status !== Image.Ready || _image.paintedWidth <= 0
                             }
 
                             ColumnLayout

@@ -77,7 +77,7 @@ StackView
             trackNumberVisible: true
             focus: true
 
-            holder.emoji: "qrc:/assets/media-album-track.svg"
+            holder.emoji: "qrc:/assets/cover.svg"
             holder.title : "Oops!"
             holder.body: i18n("This list is empty")
 

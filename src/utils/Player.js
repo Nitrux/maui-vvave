@@ -2,6 +2,38 @@
 
 .import org.maui.vvave as Vvave
 
+function playlistPage()
+{
+    return root && root.mainPlaylist ? root.mainPlaylist : null
+}
+
+function playlistView()
+{
+    const page = playlistPage()
+    return page && page.listView ? page.listView : null
+}
+
+function playlistCount()
+{
+    const page = playlistPage()
+    const list = page && page.listModel ? page.listModel.list : null
+    return list && list.count !== undefined ? Math.max(0, Number(list.count) || 0) : 0
+}
+
+function positionPlaylistAtEnd()
+{
+    const view = playlistView()
+    if (view && view.positionViewAtEnd)
+        view.positionViewAtEnd()
+}
+
+function positionPlaylistAtBeginning()
+{
+    const view = playlistView()
+    if (view && view.positionViewAtBeginning)
+        view.positionViewAtBeginning()
+}
+
 function playTrack()
 {
     const nextSource = currentTrack && currentTrack.url ? currentTrack.url : ""
@@ -68,8 +100,10 @@ function quickPlay(track)
 {
     //    root.pageStack.currentIndex = 0
     appendTrack(track)
-    playAt(mainPlaylist.listView.count-1)
-    mainPlaylist.listView.positionViewAtEnd()
+    const index = playlistCount() - 1
+    if (index >= 0)
+        playAt(index)
+    positionPlaylistAtEnd()
 }
 
 function appendTracksAt(tracks, at)
@@ -107,7 +141,7 @@ function addTrack(track)
     if(track)
     {
         appendTrack(track)
-        mainPlaylist.listView.positionViewAtEnd()
+        positionPlaylistAtEnd()
     }
 }
 
@@ -116,13 +150,13 @@ function appendAll(tracks)
     for(var track of tracks)
         appendTrack(track)
 
-    mainPlaylist.listView.positionViewAtEnd()
+    positionPlaylistAtEnd()
 
     if (tracks.length > 1 && root.playlistManager.playMode === Vvave.Playlist.Shuffle)
     {
         root.playlistManager.shuffleRange(
-            mainPlaylist.listView.count - tracks.length,
-            mainPlaylist.listView.count)
+            playlistCount() - tracks.length,
+            playlistCount())
     }
 }
 
@@ -138,20 +172,20 @@ function playAll(tracks)
     if (!tracks || tracks.length === 0)
         return
 
-    mainPlaylist.listView.positionViewAtBeginning()
+    positionPlaylistAtBeginning()
     playAt(0)
 }
 
 function appendAllModel(model)
 {
     mainPlaylist.listModel.list.copy(model)
-    mainPlaylist.listView.positionViewAtEnd()
+    positionPlaylistAtEnd()
 
     if (model.count > 1 && root.playlistManager.playMode === Vvave.Playlist.Shuffle)
     {
         root.playlistManager.shuffleRange(
-            mainPlaylist.listView.count - model.count,
-            mainPlaylist.listView.count)
+            playlistCount() - model.count,
+            playlistCount())
     }
 }
 
@@ -173,7 +207,7 @@ function playAllModel(model)
     if (!model || model.count === 0)
         return
 
-    mainPlaylist.listView.positionViewAtBeginning()
+    positionPlaylistAtBeginning()
     playAt(0)
 }
 
@@ -189,7 +223,7 @@ function shuffleAllModel(model)
     if (!model || model.count === 0)
         return
 
-    mainPlaylist.listView.positionViewAtBeginning()
+    positionPlaylistAtBeginning()
     root.playlistManager.playMode = Vvave.Playlist.Shuffle
     playAt(0)
 }

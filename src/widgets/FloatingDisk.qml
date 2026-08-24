@@ -179,6 +179,15 @@ Loader
                 }
             }
 
+            Maui.Icon
+            {
+                anchors.centerIn: parent
+                width: parent.width * 0.48
+                height: width
+                source: "qrc:/assets/cover.svg"
+                visible: _img.status !== Image.Ready || _img.paintedWidth <= 0
+            }
+
             Rectangle
             {
                 anchors.fill: parent
