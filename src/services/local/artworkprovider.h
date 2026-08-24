@@ -11,7 +11,7 @@ class ArtworkFetcher : public QObject
     Q_OBJECT
 
 public:
-    void fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology);
+    void fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology, bool highResolution);
 
 Q_SIGNALS:
     void artworkReady(const QUrl &url);

@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file>utils/Player.js</file>
-        <file>assets/cover.svg</file>
+        <file>assets/cover_32x32.svg</file>
+        <file>assets/cover_64x64.svg</file>
         <file>db/Queries.js</file>
         <file>assets/vvave.png</file>
         <file>assets/vvave.svg</file>

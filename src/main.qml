@@ -3,7 +3,6 @@ import QtCore
 
 import QtQuick.Controls
 import QtQuick.Effects
-import QtQuick.Shapes
 import QtQuick.Window
 import QtQuick.Layouts
 
@@ -764,29 +763,6 @@ Maui.ApplicationWindow
 
                         setFooterVolume((_footerVolumeSlider.value || 0) + (delta > 0 ? _footerVolumeSlider.stepSize : -_footerVolumeSlider.stepSize))
                         wheel.accepted = true
-                    }
-                }
-            }
-
-            ToolButton
-            {
-                visible: focusView
-                onClicked: toggleFocusView()
-                padding: Maui.Style.space.small
-
-                contentItem: Shape
-                {
-                    implicitWidth: 10
-                    implicitHeight: 6
-
-                    ShapePath
-                    {
-                        fillColor: Maui.Theme.textColor
-                        strokeWidth: -1
-                        startX: 0; startY: 0
-                        PathLine { x: 10; y: 0 }
-                        PathLine { x: 5; y: 6 }
-                        PathLine { x: 0; y: 0 }
                     }
                 }
             }

@@ -16,11 +16,9 @@ set(vvave_SRCS
     services/local/artworkprovider.cpp
     services/local/player.cpp
     services/local/playlist.cpp
-    services/local/trackinfo.cpp
     services/local/metadataeditor.cpp
     services/local/powermanagementinterface.cpp
     models/tracks/tracksmodel.cpp
-    models/playlists/playlistsmodel.cpp
     models/albums/albumsmodel.cpp
     kde/mpris2/mpris2.cpp
     kde/server.cpp)
@@ -45,9 +43,9 @@ qt_add_qml_module(${PROJECT_NAME} URI app.maui.vvave
     NO_IMPORT_SCAN
     QML_FILES
     main.qml
+    widgets/ArtworkItem.qml
     widgets/LibraryView.qml
     widgets/MainPlaylist/MainPlaylist.qml
-    widgets/InfoView/InfoView.qml
     widgets/FloatingDisk.qml
     widgets/SelectionBar.qml
     widgets/SettingsView/SettingsDialog.qml

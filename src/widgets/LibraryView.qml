@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 
 import org.mauikit.controls as Maui
 import org.maui.vvave
@@ -36,7 +37,10 @@ Maui.Page
     property bool _favoritesActivated: false
     property bool _detailTracksActivated: false
     property bool _albumsActivated: false
+    property bool _artistAlbumsActivated: false
     property bool _artistsActivated: false
+    property bool resultFilterExpanded: false
+    property string _pendingResultFilter: ""
 
     readonly property Item currentItem: mode === control.songsMode
                                         ? _songsLoader.item
@@ -62,6 +66,10 @@ Maui.Page
                                                   : (mode === control.artistsMode
                                                      ? _artistsModel
                                                      : _artistAlbumsModel)
+    readonly property var currentResultModel: control.isTrackMode
+                                              ? control.currentTracksModel
+                                              : (control.isCollectionMode ? control.currentCollectionModel : null)
+    readonly property bool resultFilterAvailable: control.currentResultModel !== null
     readonly property string categoryName:
     {
         switch (mode)
@@ -101,6 +109,40 @@ Maui.Page
         return encodeURIComponent(String(value || "").trim()).replace(/\//g, "%2F")
     }
 
+    function applyResultFilter(query)
+    {
+        if (!currentResultModel)
+            return
+
+        if (query.length === 0)
+            currentResultModel.clearFilters()
+        else
+            currentResultModel.filters = [query]
+    }
+
+    function clearResultFilter()
+    {
+        _resultFilterTimer.stop()
+        _pendingResultFilter = ""
+        if (_resultFilterField.text.length > 0)
+            _resultFilterField.clear()
+        if (currentResultModel)
+            currentResultModel.clearFilters()
+        resultFilterExpanded = false
+    }
+
+    function toggleResultFilter()
+    {
+        if (!resultFilterAvailable)
+            return
+
+        resultFilterExpanded = !resultFilterExpanded
+        if (resultFilterExpanded)
+            Qt.callLater(() => _resultFilterField.forceActiveFocus())
+        else
+            clearResultFilter()
+    }
+
     function componentForMode(targetMode)
     {
         if (targetMode === control.focusModeValue)
@@ -136,8 +178,10 @@ Maui.Page
             _detailTracksActivated = true
             break
         case control.albumsMode:
-        case control.artistAlbumsMode:
             _albumsActivated = true
+            break
+        case control.artistAlbumsMode:
+            _artistAlbumsActivated = true
             break
         case control.artistsMode:
             _artistsActivated = true
@@ -148,6 +192,8 @@ Maui.Page
     function requestMode(targetMode)
     {
         const nextMode = Number(targetMode)
+        if (nextMode !== mode)
+            clearResultFilter()
         if (!_ready)
         {
             mode = nextMode
@@ -530,7 +576,8 @@ Maui.Page
 
         ToolButton
         {
-            visible: control.mode === control.artistAlbumsMode
+            visible: control.mode === control.focusModeValue
+                     || control.mode === control.artistAlbumsMode
                      || control.mode === control.detailTracksMode
                      || (control.mode === control.albumsMode
                          && control.currentArtist.length > 0
@@ -571,12 +618,14 @@ Maui.Page
 
         ToolSeparator
         {
+            visible: !control.resultFilterExpanded
             bottomPadding: 10
             topPadding: 10
         }
 
         ToolButton
         {
+            visible: !control.resultFilterExpanded
             text: i18n("Songs")
             display: AbstractButton.IconOnly
             icon.name: "view-media-track"
@@ -587,6 +636,7 @@ Maui.Page
 
         ToolButton
         {
+            visible: !control.resultFilterExpanded
             text: i18n("Albums")
             display: AbstractButton.IconOnly
             icon.name: "view-media-album-cover"
@@ -600,6 +650,7 @@ Maui.Page
 
         ToolButton
         {
+            visible: !control.resultFilterExpanded
             text: i18n("Artists")
             display: AbstractButton.IconOnly
             icon.name: "view-media-artist"
@@ -612,6 +663,7 @@ Maui.Page
 
         ToolButton
         {
+            visible: !control.resultFilterExpanded
             text: i18n("Tags")
             display: AbstractButton.IconOnly
             icon.name: "tag"
@@ -622,15 +674,87 @@ Maui.Page
 
         ToolSeparator
         {
+            visible: !control.resultFilterExpanded
             bottomPadding: 10
             topPadding: 10
         }
+
+        Maui.SearchField
+        {
+            id: _resultFilterField
+            visible: control.resultFilterExpanded
+            Layout.preferredWidth: 320
+            Layout.maximumWidth: 360
+            Layout.alignment: Qt.AlignCenter
+            placeholderText: i18n("Filter results")
+            inputMethodHints: Qt.ImhNoAutoUppercase
+
+            onTextChanged:
+            {
+                const query = text.trim()
+                control._pendingResultFilter = query
+                if (query.length === 0)
+                {
+                    _resultFilterTimer.stop()
+                    control.applyResultFilter("")
+                }
+                else
+                {
+                    _resultFilterTimer.restart()
+                }
+            }
+
+            onCleared:
+            {
+                control._pendingResultFilter = ""
+                _resultFilterTimer.stop()
+                control.applyResultFilter("")
+            }
+
+            Keys.onPressed: (event) =>
+            {
+                if (event.key === Qt.Key_Escape)
+                {
+                    control.clearResultFilter()
+                    event.accepted = true
+                }
+            }
+        }
     }
 
-    headBar.rightContent: Loader
+    headBar.rightContent: [
+        ToolButton
+        {
+            visible: control.resultFilterAvailable
+            text: i18n("Search")
+            display: AbstractButton.IconOnly
+            icon.name: "edit-find"
+            checkable: true
+            checked: control.resultFilterExpanded
+            ToolTip.visible: hovered
+            ToolTip.text: i18n("Search")
+            onClicked: control.toggleResultFilter()
+        },
+
+        ToolSeparator
+        {
+            bottomPadding: 10
+            topPadding: 10
+        },
+
+        Loader
+        {
+            asynchronous: false
+            sourceComponent: control.menuComponent
+        }
+    ]
+
+    Timer
     {
-        asynchronous: false
-        sourceComponent: control.menuComponent
+        id: _resultFilterTimer
+        interval: 180
+        repeat: false
+        onTriggered: control.applyResultFilter(control._pendingResultFilter)
     }
 
     Tracks
@@ -707,6 +831,14 @@ Maui.Page
 
     Albums
     {
+        id: _artistAlbumsSource
+        query: Albums.ALBUMS
+        artist: control.currentArtist
+        autoPopulate: control._artistAlbumsActivated
+    }
+
+    Albums
+    {
         id: _artistsSource
         query: Albums.ARTISTS
         autoPopulate: control._artistsActivated
@@ -726,9 +858,7 @@ Maui.Page
     Maui.BaseModel
     {
         id: _artistAlbumsModel
-        list: _albumsSource
-        filterRole: "artist"
-        filters: control.currentArtist.length > 0 ? [control.currentArtist] : []
+        list: _artistAlbumsSource
         sort: "album"
         sortOrder: Qt.AscendingOrder
         recursiveFilteringEnabled: true
@@ -848,6 +978,7 @@ Maui.Page
 
             delegate: Maui.ListBrowserDelegate
             {
+                id: _trackDelegate
                 width: ListView.view.width
                 height: Math.max(implicitHeight, Maui.Style.rowHeight)
 
@@ -859,7 +990,15 @@ Maui.Page
                     return artist + (artist.length > 0 && album.length > 0 ? " - " : "") + album
                 }
                 label3.text: model.genre
-                iconSource: "qrc:/assets/cover.svg"
+                iconSource: "qrc:/assets/cover_32x32.svg"
+                template.iconComponent: ArtworkItem
+                {
+                    fallbackSource: "qrc:/assets/cover_32x32.svg"
+                    imageSource: _trackDelegate.imageSource
+                    fallbackColor: Maui.ColorUtils.tintWithAlpha(_trackDelegate.effectiveForegroundColor, Maui.Theme.highlightColor, 0.2)
+                    iconSizeHint: _trackDelegate.iconSizeHint
+                    maskRadius: _trackDelegate.maskRadius
+                }
                 imageSource: control.artworkSourceFor(model.artist, model.album)
                 maskRadius: Maui.Style.radiusV
 
@@ -933,6 +1072,7 @@ Maui.Page
 
                 Maui.GridBrowserDelegate
                 {
+                    id: _collectionDelegate
                     width: Math.min(_collectionBrowser.itemWidth, parent.width - (Maui.Style.space.small * 2))
                     height: Math.min(_collectionBrowser.itemHeight, parent.height - (Maui.Style.space.small * 2))
                     anchors.centerIn: parent
@@ -940,8 +1080,19 @@ Maui.Page
                     isCurrentItem: parent.GridView.isCurrentItem
                     label1.text: model.album ? model.album : model.artist
                     label2.text: model.album && model.artist ? model.artist : ""
-                    iconSource: "qrc:/assets/cover.svg"
+                    iconSource: "qrc:/assets/cover_64x64.svg"
                     iconSizeHint: Maui.Style.iconSizes.huge
+                    template.iconComponent: ArtworkItem
+                    {
+                        imageSource: _collectionDelegate.imageSource
+                        fallbackColor: Maui.ColorUtils.tintWithAlpha(_collectionDelegate.effectiveForegroundColor, Maui.Theme.highlightColor, 0.2)
+                        iconSizeHint: _collectionDelegate.iconSizeHint
+                        imageSizeHint: _collectionDelegate.imageSizeHint
+                        fillMode: _collectionDelegate.fillMode
+                        maskRadius: _collectionDelegate.maskRadius
+                        imageWidth: _collectionDelegate.imageWidth
+                        imageHeight: _collectionDelegate.imageHeight
+                    }
                     imageSource: control.artworkSourceFor(model.artist, model.album)
                     maskRadius: Maui.Style.radiusV
                     template.labelsVisible: true
@@ -978,7 +1129,7 @@ Maui.Page
             {
                 anchors.fill: parent
                 visible: !root.currentTrack || !root.currentTrack.url
-                emoji: "qrc:/assets/cover.svg"
+                emoji: "qrc:/assets/cover_64x64.svg"
                 title: i18n("Nothing to play!")
                 body: i18n("Start putting together your playlist.")
             }
@@ -1007,12 +1158,26 @@ Maui.Page
 
                         Image
                         {
-                            id: _focusArtwork
+                            id: _focusArtworkPreview
                             anchors.fill: parent
                             anchors.margins: Maui.Style.space.small
                             asynchronous: true
                             fillMode: Image.PreserveAspectFit
                             source: control.artworkSourceFor(root.currentTrack.artist, root.currentTrack.album)
+                            visible: !_focusArtwork.visible
+                        }
+
+                        Image
+                        {
+                            id: _focusArtwork
+                            anchors.fill: parent
+                            anchors.margins: Maui.Style.space.small
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                            source: control.artworkSourceFor(root.currentTrack.artist, root.currentTrack.album, true)
+                            visible: status === Image.Ready && paintedWidth > 0 && paintedHeight > 0
                         }
 
                         Maui.Icon
@@ -1020,8 +1185,11 @@ Maui.Page
                             anchors.centerIn: parent
                             width: Math.min(parent.width, parent.height) * 0.45
                             height: width
-                            source: "qrc:/assets/cover.svg"
-                            visible: _focusArtwork.status !== Image.Ready || _focusArtwork.paintedWidth <= 0
+                            source: "qrc:/assets/cover_64x64.svg"
+                            visible: !_focusArtwork.visible
+                                     && (_focusArtworkPreview.status !== Image.Ready
+                                         || _focusArtworkPreview.paintedWidth <= 0
+                                         || _focusArtworkPreview.paintedHeight <= 0)
                         }
                     }
                 }
@@ -1040,6 +1208,7 @@ Maui.Page
                 {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
+                    Layout.bottomMargin: Maui.Style.space.big
                     text: root.currentTrack && root.currentTrack.artist ? root.currentTrack.artist : ""
                     font.pointSize: Maui.Style.fontSizes.big
                     opacity: 0.7
@@ -1049,7 +1218,7 @@ Maui.Page
         }
     }
 
-    function artworkSourceFor(artist, album)
+    function artworkSourceFor(artist, album, highResolution)
     {
         const artistName = String(artist || "").trim()
         const albumName = String(album || "").trim()
@@ -1058,9 +1227,9 @@ Maui.Page
         const albumKnown = albumName.length > 0 && albumName.toUpperCase() !== "UNKNOWN"
 
         if (artistKnown && albumKnown)
-            return "image://artwork/album:" + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
+            return "image://artwork/" + (highResolution ? "focusAlbum:" : "album:") + encodeURIComponent(artistName) + ":" + encodeURIComponent(albumName)
         if (artistKnown)
-            return "image://artwork/artist:" + encodeURIComponent(artistName)
+            return "image://artwork/" + (highResolution ? "focusArtist:" : "artist:") + encodeURIComponent(artistName)
         return ""
     }
 

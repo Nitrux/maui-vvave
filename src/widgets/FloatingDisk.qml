@@ -184,7 +184,7 @@ Loader
                 anchors.centerIn: parent
                 width: parent.width * 0.48
                 height: width
-                source: "qrc:/assets/cover.svg"
+                source: "qrc:/assets/cover_64x64.svg"
                 visible: _img.status !== Image.Ready || _img.paintedWidth <= 0
             }
 

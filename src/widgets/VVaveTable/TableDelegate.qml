@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 import org.mauikit.controls as Maui
 
+import ".."
+
 Maui.ListBrowserDelegate
 {
     id: control
@@ -22,7 +24,15 @@ Maui.ListBrowserDelegate
 
     isCurrentItem: ListView.isCurrentItem || checked
     draggable: true
-    iconSource: "qrc:/assets/cover.svg"
+    iconSource: "qrc:/assets/cover_32x32.svg"
+    template.iconComponent: ArtworkItem
+    {
+        fallbackSource: "qrc:/assets/cover_32x32.svg"
+        imageSource: control.imageSource
+        fallbackColor: Maui.ColorUtils.tintWithAlpha(control.effectiveForegroundColor, Maui.Theme.highlightColor, 0.2)
+        iconSizeHint: control.iconSizeHint
+        maskRadius: control.maskRadius
+    }
 
     label1.text: control.number ? control.track + ". " + control.title :  control.title
     label2.text: control.artist + " • " + control.album
