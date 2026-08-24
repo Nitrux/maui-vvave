@@ -124,14 +124,18 @@ Loader
             anchors.verticalCenterOffset: 10
             anchors.horizontalCenterOffset: -5
 
-            sourceComponent: Maui.Badge
+            sourceComponent: ToolButton
             {
                 text: _floatingViewer.Maui.Controls.badgeText
+                display: ToolButton.TextOnly
+                font.bold: true
+                font.pointSize: Maui.Style.fontSizes.small
 
-                padding: 2
-                font.pointSize: Maui.Style.fontSizes.tiny
-
-                Maui.Controls.status: Maui.Controls.Negative
+                background: Rectangle
+                {
+                    color: Maui.Theme.alternateBackgroundColor
+                    radius: Maui.Style.radiusV
+                }
 
                 OpacityAnimator on opacity
                 {

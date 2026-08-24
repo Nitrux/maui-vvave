@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 
 import org.mauikit.controls as Maui
+import org.mauikit.filebrowsing as FB
 import org.maui.vvave
 
 import "../db/Queries.js" as Q
@@ -29,7 +30,6 @@ Maui.Page
     property int returnMode: control.songsMode
     property string currentArtist: ""
     property string currentAlbum: ""
-    property string currentTag: "fav"
     property string detailQuery: ""
     property int _transitionSerial: 0
     property bool _ready: false
@@ -80,7 +80,7 @@ Maui.Page
         case control.artistsMode:
             return "artists"
         case control.favoritesMode:
-            return "tags"
+            return "favorites"
         case control.detailTracksMode:
         case control.songsMode:
             return "songs"
@@ -260,8 +260,6 @@ Maui.Page
             requestMode(control.artistsMode)
             break
         case 3:
-            currentTag = "fav"
-            _favoritesSource.query = Q.GET.playlistTracks_.arg(currentTag)
             requestMode(control.favoritesMode)
             break
         default:
@@ -311,14 +309,6 @@ Maui.Page
         detailQuery = "vvave://artist/" + encodeQueryPart(artistName)
         _detailTracksSource.query = detailQuery
         requestMode(control.detailTracksMode)
-    }
-
-    function openTag(tag)
-    {
-        currentTag = String(tag || "fav")
-        returnMode = control.favoritesMode
-        _favoritesSource.query = Q.GET.playlistTracks_.arg(currentTag)
-        requestMode(control.favoritesMode)
     }
 
     function activateCollection(index)
@@ -371,6 +361,7 @@ Maui.Page
 
         _contextMenu.index = index
         _contextMenu.track = item
+        _contextMenu.favorite = item.url ? FB.Tagging.isFav(item.url) : false
         _contextMenu.show()
     }
 
@@ -389,6 +380,21 @@ Maui.Page
 
         _metadataDialog.openFor(item, currentTracksModel,
                                 currentTracksSource, index)
+    }
+
+    function refreshFavorites()
+    {
+        _favoritesSource.refresh()
+    }
+
+    function setFavorite(index, favorite)
+    {
+        if (!currentTracksModel || index < 0 || index >= currentTracksModel.count)
+            return
+
+        const item = currentTracksModel.get(index)
+        if (item && item.url)
+            root.setFavorite(item.url, favorite)
     }
 
     function playCurrentModel()
@@ -465,6 +471,21 @@ Maui.Page
         id: _contextMenu
         property int index: -1
         property var track: null
+        property bool favorite: false
+
+        MenuItem
+        {
+            text: i18n("Select")
+            icon.name: "item-select"
+            onTriggered:
+            {
+                if (_contextMenu.track)
+                    selectionBar.addToSelection(_contextMenu.track)
+                _contextMenu.close()
+            }
+        }
+
+        MenuSeparator {}
 
         MenuItem
         {
@@ -474,7 +495,20 @@ Maui.Page
             {
                 if (_contextMenu.track)
                     Player.queueTracks([_contextMenu.track])
-                close()
+                _contextMenu.close()
+            }
+        }
+
+        MenuItem
+        {
+            text: _contextMenu.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
+            icon.name: "love"
+            onTriggered:
+            {
+                const index = _contextMenu.index
+                const favorite = !_contextMenu.favorite
+                _contextMenu.close()
+                control.setFavorite(index, favorite)
             }
         }
 
@@ -488,7 +522,7 @@ Maui.Page
             {
                 if (_contextMenu.track)
                     control.openArtistTracks(_contextMenu.track.artist)
-                close()
+                _contextMenu.close()
             }
         }
 
@@ -500,7 +534,7 @@ Maui.Page
             {
                 if (_contextMenu.track)
                     control.openAlbum(_contextMenu.track.album, _contextMenu.track.artist)
-                close()
+                _contextMenu.close()
             }
         }
 
@@ -532,7 +566,7 @@ Maui.Page
                     const path = raw.startsWith("file://") ? decodeURIComponent(raw.replace("file://", "")) : raw
                     Maui.Handy.copyTextToClipboard(path)
                 }
-                close()
+                _contextMenu.close()
             }
         }
     }
@@ -681,9 +715,9 @@ Maui.Page
         ToolButton
         {
             visible: !control.resultFilterExpanded
-            text: i18n("Tags")
+            text: i18n("Favorites")
             display: AbstractButton.IconOnly
-            icon.name: "tag"
+            icon.name: "love"
             checkable: true
             checked: control.mode === control.favoritesMode
             onClicked: control.showCategory(3)
@@ -795,7 +829,7 @@ Maui.Page
     Tracks
     {
         id: _favoritesSource
-        query: Q.GET.playlistTracks_.arg(control.currentTag)
+        query: Q.GET.playlistTracks_.arg("fav")
         autoPopulate: control._favoritesActivated
     }
 

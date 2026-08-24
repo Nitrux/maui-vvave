@@ -36,21 +36,14 @@ Maui.SelectionBar
 
     Action
     {
-        text: i18n("Append")
+        text: i18n("Add to Playlist")
         icon.name: "media-playlist-append"
         onTriggered: Player.appendAll(control.items)
     }
 
     Action
     {
-        text: i18n("Tags")
-        icon.name: "tag"
-        onTriggered: tagUrls(control.uris)
-    }
-
-    Action
-    {
-        text: i18n("Remove")
+        text: i18n("Delete Files")
         icon.name: "edit-delete"
         onTriggered:
         {

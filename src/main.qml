@@ -65,8 +65,6 @@ Maui.ApplicationWindow
     Maui.Style.adaptiveColorSchemeSource: focusAdaptiveSource
     Maui.Style.accentColor: focusView ? focusAccentColor : root.vvaveColor
 
-    property QtObject tagsDialog : null
-
     /***************************************************/
     /******************** ALIASES ********************/
     /*************************************************/
@@ -94,7 +92,6 @@ Maui.ApplicationWindow
 
     property string syncPlaylist: ""
     property bool sync: false
-    property string lastUsedTag
 
     property bool focusView: settings.focusViewDefault
     property bool selectionMode : false
@@ -453,41 +450,6 @@ Maui.ApplicationWindow
                     text: i18n("Cancel")
                     onTriggered: close()
                 }]
-        }
-    }
-
-    Component
-    {
-        id: _tagsDialogComponent
-
-        FB.TagsDialog
-        {
-            Action
-            {
-                property string tag
-                id: _openTagAction
-                text: tag
-                onTriggered:
-                {
-                    goToTag(tag)
-                }
-            }
-
-            onTagsReady: (tags) =>
-                         {
-                             var actions = []
-                             if(tags.length === 1)
-                             {
-                                 _openTagAction.tag = tags[0]
-                                 actions = [_openTagAction]
-                                 root.lastUsedTag = tags[0]
-                             }
-
-                             Maui.App.rootComponent.notify("dialog-info", i18n("Saved"), i18n("Track added to tag"), actions)
-                             composerList.updateToUrls(tags)
-                         }
-
-            composerList.strict: false
         }
     }
 
@@ -1155,6 +1117,17 @@ Maui.ApplicationWindow
         dialog.open()
     }
 
+    function setFavorite(url, favorite)
+    {
+        if (!url)
+            return false
+
+        const changed = favorite ? FB.Tagging.fav(url) : FB.Tagging.unFav(url)
+        if (changed)
+            libraryView.refreshFavorites()
+        return changed
+    }
+
     function goToAlbum(artist, album)
     {
         if (root.focusView)
@@ -1169,27 +1142,6 @@ Maui.ApplicationWindow
             root.focusView = false
 
         libraryView.openArtistTracks(artist)
-    }
-
-    function goToTag(tag)
-    {
-        if (root.focusView)
-            root.focusView = false
-
-        libraryView.openTag(tag)
-    }
-
-    function tagUrls(urls)
-    {
-        if(root.tagsDialog)
-        {
-            root.tagsDialog.composerList.urls = urls
-        }else
-        {
-            root.tagsDialog =  _tagsDialogComponent.createObject(root, ({'composerList.urls' : urls}))
-        }
-
-        root.tagsDialog.open()
     }
 
     function openFiles(urls)
