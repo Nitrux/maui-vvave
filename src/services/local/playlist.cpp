@@ -371,6 +371,14 @@ void Playlist::setModel(TracksModel *model)
     m_model = model;
     if (m_model) {
         connect(m_model, &TracksModel::countChanged, this, &Playlist::canPlayChanged);
+        connect(m_model, &TracksModel::updateModel, this, [this](int index, const QVector<int> &) {
+            if (index != m_currentIndex) {
+                return;
+            }
+
+            m_currentTrack = m_model->get(m_currentIndex);
+            Q_EMIT currentTrackChanged(m_currentTrack);
+        });
     }
     Q_EMIT modelChanged(m_model);
 }
@@ -398,6 +406,7 @@ void Playlist::setCurrentIndex(int index)
 
     Q_EMIT currentIndexChanged(m_currentIndex);
     Q_EMIT currentTrackChanged(m_currentTrack);
+    Q_EMIT playbackTrackChanged();
 }
 
 void Playlist::changeCurrentIndex(int index)

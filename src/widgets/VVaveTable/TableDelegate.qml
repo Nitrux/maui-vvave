@@ -17,6 +17,7 @@ Maui.ListBrowserDelegate
     readonly property string album : String(model.album || "").trim()
     readonly property string title : model.title
     readonly property url url : model.url
+    readonly property url artwork : model.artwork || ""
     readonly property int track : model.track
 
     property bool sameAlbum : false
@@ -39,6 +40,6 @@ Maui.ListBrowserDelegate
     label2.visible: control.coverArt ? !control.sameAlbum : true
 
     iconVisible: !control.sameAlbum && control.coverArt
-    imageSource: coverArt ? "image://artwork/album:" + encodeURIComponent(String(control.artist || "")) + ":" + encodeURIComponent(String(control.album || "")) : ""
+    imageSource: coverArt ? (control.artwork || "image://artwork/album:" + encodeURIComponent(String(control.artist || "")) + ":" + encodeURIComponent(String(control.album || ""))) : ""
 
 }

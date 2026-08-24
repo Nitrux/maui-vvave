@@ -220,21 +220,6 @@ Maui.Page
 
     Component
     {
-        id: _metadataDialogComponent
-
-        MetadataDialog
-        {
-            model: listModel
-            onClosed: destroy()
-            onEdited: (data, index) =>
-                      {
-                          control.list.updateMetadata(data, model.mappedToSource(index))
-                      }
-        }
-    }
-
-    Component
-    {
         id: _removeDialogComponent
 
         FB.FileListingDialog

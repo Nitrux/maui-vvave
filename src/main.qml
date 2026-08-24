@@ -80,6 +80,7 @@ Maui.ApplicationWindow
     readonly property alias currentTrackIndex: playlist.currentIndex
 
     readonly property alias isPlaying: player.playing
+    readonly property int playbackElapsed: player.elapsed
     readonly property alias mainPlaylist : _mainPlaylist
     readonly property bool mainlistEmpty: mainPlaylist ? mainPlaylist.listModel.list.count === 0 : false
 
@@ -99,12 +100,24 @@ Maui.ApplicationWindow
     property bool selectionMode : false
     property bool _forceClose: false
     property bool _outputSelectionReady: false
+    property int _metadataResumeElapsed: -1
     property int _lastAudibleVolume: 100
 
     /***************************************************/
     /******************** UI COLORS *******************/
     /*************************************************/
     readonly property color vvaveColor: "#f84172"
+
+    function suspendPlaybackForMetadataEdit()
+    {
+        player.stop()
+    }
+
+    function resumePlaybackAfterMetadataEdit(elapsed)
+    {
+        root._metadataResumeElapsed = Math.max(0, Number(elapsed) || 0)
+        player.play()
+    }
 
     /*HANDLE EVENTS*/
     signal contextualPlayNext()
@@ -314,7 +327,7 @@ Maui.ApplicationWindow
         id: playlist
 
         model: mainPlaylist.listModel.list
-        onCurrentTrackChanged: Player.playTrack()
+        onPlaybackTrackChanged: Player.playTrack()
 
         onMissingFile: (track) =>
                        {
@@ -328,6 +341,15 @@ Maui.ApplicationWindow
     {
         id: player
         volume: settings.volume
+        onStateChanged:
+        {
+            if (player.state === Player.Playing && root._metadataResumeElapsed >= 0)
+            {
+                const elapsed = root._metadataResumeElapsed
+                root._metadataResumeElapsed = -1
+                player.seek(elapsed)
+            }
+        }
         onPreferredOutputChanged:
         {
             if (!root._outputSelectionReady)

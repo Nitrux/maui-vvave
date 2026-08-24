@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QObject>
 #include <QStringList>
+#include <QVariantMap>
 
 #include <MauiKit4/Core/fmh.h>
 
@@ -22,6 +23,7 @@ public:
     static FMH::MODEL_LIST artists();
     static FMH::MODEL_LIST tracksForTag(const QString &tag);
     static FMH::MODEL_LIST tracksFromQuery(const QString &query);
+    static bool updateTrackMetadata(const QVariantMap &data);
 
     bool fetchArtwork() const;
 
@@ -65,6 +67,7 @@ Q_SIGNALS:
     void sourceRemoved(QUrl source);
 
     void collectionChanged();
+    void trackMetadataChanged(QVariantMap track);
     void scanFinished(int totalTracks, int reusedTracks, int parsedTracks, qint64 elapsedMs);
     void sourcesChanged();
     void fetchArtworkChanged(bool fetchArtwork);

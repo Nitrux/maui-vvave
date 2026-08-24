@@ -359,11 +359,15 @@ Maui.Page
     function openContextMenu(index)
     {
         if (!currentTracksModel || index < 0 || index >= currentTracksModel.count)
+        {
             return
+        }
 
         const item = currentTracksModel.get(index)
         if (!item)
+        {
             return
+        }
 
         _contextMenu.index = index
         _contextMenu.track = item
@@ -373,19 +377,18 @@ Maui.Page
     function openMetadataDialog(index)
     {
         if (!currentTracksModel || index < 0 || index >= currentTracksModel.count)
+        {
             return
+        }
 
         const item = currentTracksModel.get(index)
         if (!item || !item.url)
+        {
             return
+        }
 
-        const dialog = _metadataDialogComponent.createObject(control, ({
-            model: currentTracksModel,
-            index: index,
-            data: item
-        }))
-        if (dialog)
-            dialog.open()
+        _metadataDialog.openFor(item, currentTracksModel,
+                                currentTracksSource, index)
     }
 
     function playCurrentModel()
@@ -509,8 +512,11 @@ Maui.Page
             icon.name: "document-edit"
             onTriggered:
             {
-                control.openMetadataDialog(_contextMenu.index)
-                close()
+                const metadataIndex = _contextMenu.index
+                _contextMenu.close()
+                Qt.callLater(() => {
+                    control.openMetadataDialog(metadataIndex)
+                })
             }
         }
 
@@ -531,26 +537,37 @@ Maui.Page
         }
     }
 
-    Component
+    MetadataDialog
     {
-        id: _metadataDialogComponent
+        id: _metadataDialog
 
-        MetadataDialog
+        onEdited: (data, index, proxyModel, source) =>
         {
-            onClosed: destroy()
-            onEdited: (data, index) =>
+            if (!source || typeof source.updateMetadata !== "function" || !data)
             {
-                const source = control.currentTracksSource
-                if (!source || !source.updateMetadata || !data)
-                    return
-
-                const dialogModel = model
-                const sourceIndex = dialogModel && typeof dialogModel.mappedToSource === "function"
-                                   ? dialogModel.mappedToSource(index)
-                                   : index
-                if (sourceIndex >= 0)
-                    source.updateMetadata(data, sourceIndex)
+                return
             }
+
+            const sourceIndex = proxyModel && typeof proxyModel.mappedToSource === "function"
+                               ? proxyModel.mappedToSource(index)
+                               : index
+            if (sourceIndex < 0)
+            {
+                return
+            }
+
+            const editingPlayingTrack = root.isPlaying
+                    && root.currentTrack
+                    && String(root.currentTrack.url) === String(data.url)
+            const playbackElapsed = editingPlayingTrack ? root.playbackElapsed : 0
+
+            if (editingPlayingTrack)
+                root.suspendPlaybackForMetadataEdit()
+
+            source.updateMetadata(data, sourceIndex)
+
+            if (editingPlayingTrack)
+                root.resumePlaybackAfterMetadataEdit(playbackElapsed)
         }
     }
 
@@ -999,7 +1016,7 @@ Maui.Page
                     iconSizeHint: _trackDelegate.iconSizeHint
                     maskRadius: _trackDelegate.maskRadius
                 }
-                imageSource: control.artworkSourceFor(model.artist, model.album)
+                imageSource: model.artwork || control.artworkSourceFor(model.artist, model.album)
                 maskRadius: Maui.Style.radiusV
 
                 onClicked:

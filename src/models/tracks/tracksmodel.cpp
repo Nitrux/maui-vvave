@@ -1,11 +1,87 @@
 #include "tracksmodel.h"
 
 #include "services/local/metadataeditor.h"
+#include "utils/bae.h"
 #include "vvave.h"
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QSaveFile>
 #include <QUrl>
 
 #include <MauiKit4/FileBrowsing/tagging.h>
+
+namespace
+{
+QString artworkCacheBase(const QString &artist, const QString &album)
+{
+    QString name = artist + QStringLiteral("_") + album;
+    BAE::fixArtworkImageFileName(name);
+    return name;
+}
+
+void removeCachedAlbumArtwork(const QString &artist, const QString &album)
+{
+    if (artist.isEmpty() || album.isEmpty())
+        return;
+
+    const auto baseName = artworkCacheBase(artist, album);
+    QDir cacheDir(BAE::CachePath.toLocalFile());
+    const auto entries = cacheDir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
+    for (const auto &entry : entries) {
+        const auto entryBaseName = entry.completeBaseName();
+        if (entryBaseName == baseName || entryBaseName == baseName + QStringLiteral("_highres"))
+            QFile::remove(entry.absoluteFilePath());
+    }
+}
+
+QString cacheAlbumArtwork(const QString &sourceValue, const QString &artist, const QString &album)
+{
+    const QUrl sourceUrl(sourceValue);
+    const QString sourcePath = sourceUrl.isLocalFile() ? sourceUrl.toLocalFile() : sourceValue;
+    const QFileInfo sourceInfo(sourcePath);
+    if (!sourceInfo.exists() || !sourceInfo.isFile() || artist.isEmpty() || album.isEmpty())
+        return QString();
+
+    auto extension = sourceInfo.suffix().toLower();
+    if (extension == QStringLiteral("jpeg"))
+        extension = QStringLiteral("jpg");
+    if (extension != QStringLiteral("jpg") && extension != QStringLiteral("png"))
+        return QString();
+
+    QDir cacheDir(BAE::CachePath.toLocalFile());
+    if (!cacheDir.exists() && !cacheDir.mkpath(QStringLiteral(".")))
+        return QString();
+
+    QFile sourceFile(sourcePath);
+    if (!sourceFile.open(QIODevice::ReadOnly))
+        return QString();
+    const auto imageData = sourceFile.readAll();
+    sourceFile.close();
+    if (imageData.isEmpty())
+        return QString();
+
+    const auto baseName = artworkCacheBase(artist, album);
+    const auto cachedPath = cacheDir.filePath(baseName + QStringLiteral(".") + extension);
+    const auto highResolutionPath = cacheDir.filePath(baseName + QStringLiteral("_highres.") + extension);
+
+    removeCachedAlbumArtwork(artist, album);
+
+    QSaveFile cachedFile(cachedPath);
+    if (!cachedFile.open(QIODevice::WriteOnly)
+            || cachedFile.write(imageData) != imageData.size()
+            || !cachedFile.commit())
+        return QString();
+
+    QSaveFile highResolutionFile(highResolutionPath);
+    if (highResolutionFile.open(QIODevice::WriteOnly)
+            && highResolutionFile.write(imageData) == imageData.size())
+        highResolutionFile.commit();
+
+    return cachedPath;
+}
+}
 
 TracksModel::TracksModel(QObject *parent)
     : MauiList(parent)
@@ -18,6 +94,7 @@ void TracksModel::componentComplete()
     m_componentCompleted = true;
     connect(this, &TracksModel::queryChanged, this, &TracksModel::setList);
     connect(vvave::instance(), &vvave::collectionChanged, this, &TracksModel::setList);
+    connect(vvave::instance(), &vvave::trackMetadataChanged, this, &TracksModel::syncTrackMetadata);
     if (m_autoPopulate) {
         reload(true);
     }
@@ -51,6 +128,20 @@ int TracksModel::limit() const
 void TracksModel::setList()
 {
     reload(false);
+}
+
+void TracksModel::syncTrackMetadata(const QVariantMap &data)
+{
+    const QUrl targetUrl(data.value(QStringLiteral("url")).toString());
+    if (targetUrl.isEmpty()) {
+        return;
+    }
+
+    for (int index = 0; index < this->list.size(); ++index) {
+        if (QUrl(this->list.at(index).value(FMH::MODEL_KEY::URL)) == targetUrl) {
+            this->update(data, index);
+        }
+    }
 }
 
 void TracksModel::reload(bool force)
@@ -248,27 +339,49 @@ bool TracksModel::update(const QVariantMap &data, const int &index)
     return true;
 }
 
-void TracksModel::updateMetadata(const QVariantMap &data, const int &index)
+bool TracksModel::updateMetadata(const QVariantMap &data, const int &index)
 {
-    if (index < 0 || index >= this->list.size() || !this->update(data, index)) {
-        return;
+    if (index < 0 || index >= this->list.size()) {
+        return false;
     }
 
-    const auto model = FMH::toModel(data);
+    QVariantMap modelData = data;
+    modelData.remove(QStringLiteral("artworkAction"));
+    modelData.remove(QStringLiteral("artworkUrl"));
+    const auto model = FMH::toModel(modelData);
     const QUrl url(model[FMH::MODEL_KEY::URL]);
     if (!url.isLocalFile() || url.toLocalFile().isEmpty()) {
-        return;
+        return false;
     }
 
     MetadataEditor editor;
     editor.setUrl(url);
-    editor.setTitle(model[FMH::MODEL_KEY::TITLE]);
-    editor.setArtist(model[FMH::MODEL_KEY::ARTIST]);
-    editor.setAlbum(model[FMH::MODEL_KEY::ALBUM]);
-    editor.setYear(model[FMH::MODEL_KEY::RELEASEDATE].toInt());
-    editor.setGenre(model[FMH::MODEL_KEY::GENRE]);
-    editor.setComment(model[FMH::MODEL_KEY::COMMENT]);
-    editor.setTrack(model[FMH::MODEL_KEY::TRACK].toInt());
+    if (!editor.save(data)) {
+        return false;
+    }
+
+    const auto previous = this->list.at(index);
+    const auto artworkAction = data.value(QStringLiteral("artworkAction"), QStringLiteral("keep")).toString();
+    const auto artist = model[FMH::MODEL_KEY::ARTIST];
+    const auto album = model[FMH::MODEL_KEY::ALBUM];
+
+    if (artworkAction == QStringLiteral("replace")) {
+        removeCachedAlbumArtwork(previous[FMH::MODEL_KEY::ARTIST], previous[FMH::MODEL_KEY::ALBUM]);
+        const auto cachedPath = cacheAlbumArtwork(data.value(QStringLiteral("artworkUrl")).toString(), artist, album);
+        modelData.insert(QStringLiteral("artwork"), cachedPath.isEmpty()
+                         ? data.value(QStringLiteral("artworkUrl")).toString()
+                         : QUrl::fromLocalFile(cachedPath).toString());
+    } else if (artworkAction == QStringLiteral("remove")) {
+        removeCachedAlbumArtwork(previous[FMH::MODEL_KEY::ARTIST], previous[FMH::MODEL_KEY::ALBUM]);
+        removeCachedAlbumArtwork(artist, album);
+        modelData.insert(QStringLiteral("artwork"), QString());
+    }
+
+    if (!this->update(modelData, index)) {
+        return false;
+    }
+    vvave::updateTrackMetadata(modelData);
+    return true;
 }
 
 bool TracksModel::move(const int &index, const int &to)
