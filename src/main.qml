@@ -768,7 +768,9 @@ Maui.ApplicationWindow
             anchors.topMargin: 0
             from: 0
             to: 1.0
-            value: player.position
+            property real playbackPosition: 0
+            property bool seeking: false
+            value: playbackPosition
             live: true
             leftPadding: 0
             rightPadding: 0
@@ -777,10 +779,38 @@ Maui.ApplicationWindow
             implicitHeight: 3
             onMoved: player.position = value
 
+            function syncPlaybackPosition()
+            {
+                if (seeking)
+                    return
+
+                const duration = Number(player.duration) || 0
+                const elapsed = Number(player.elapsed) || 0
+                playbackPosition = duration > 0 ? Math.max(0, Math.min(1, elapsed / duration)) : 0
+            }
+
+            Component.onCompleted: syncPlaybackPosition()
+
+            Connections
+            {
+                target: player
+
+                function onPositionChanged()
+                {
+                    _footerEdgeSeekBar.syncPlaybackPosition()
+                }
+
+                function onDurationChanged()
+                {
+                    _footerEdgeSeekBar.syncPlaybackPosition()
+                }
+            }
+
             function seekTo(xPos)
             {
                 const localX = Math.max(0, Math.min(availableWidth, xPos - leftPadding))
                 const ratio = Math.max(0, Math.min(1, localX / Math.max(1, availableWidth)))
+                playbackPosition = ratio
                 player.position = ratio
             }
 
@@ -819,12 +849,18 @@ Maui.ApplicationWindow
                 z: parent.z + 1
                 cursorShape: Qt.PointingHandCursor
 
-                onPressed: (mouse) => _footerEdgeSeekBar.seekTo(mouse.x)
+                onPressed: (mouse) =>
+                {
+                    _footerEdgeSeekBar.seeking = true
+                    _footerEdgeSeekBar.seekTo(mouse.x)
+                }
                 onPositionChanged: (mouse) =>
                 {
                     if (pressed)
                         _footerEdgeSeekBar.seekTo(mouse.x)
                 }
+                onReleased: _footerEdgeSeekBar.seeking = false
+                onCanceled: _footerEdgeSeekBar.seeking = false
             }
         }
 
