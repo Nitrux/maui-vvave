@@ -202,16 +202,21 @@ QList<QUrl> sanitizeSourceList(const QList<QUrl> &sources, bool *changed = nullp
     return sanitized;
 }
 
-void invalidateTrackCache()
+void invalidateCollectionIndexes()
 {
-    s_trackCacheValid = false;
     s_collectionIndexesValid = false;
-    s_cachedTracks.clear();
     s_cachedAlbums.clear();
     s_cachedArtists.clear();
     s_artistTrackRows.clear();
     s_albumTrackRows.clear();
     s_trackRowByUrl.clear();
+}
+
+void invalidateTrackCache()
+{
+    s_trackCacheValid = false;
+    s_cachedTracks.clear();
+    invalidateCollectionIndexes();
 }
 
 bool hasAudioSuffix(const QString &suffix)
@@ -877,6 +882,42 @@ FMH::MODEL_LIST vvave::localTracks()
     }
 
     return {};
+}
+
+bool vvave::updateTrackMetadata(const QVariantMap &data)
+{
+    if (!s_trackCacheValid) {
+        return false;
+    }
+
+    const QUrl url(data.value(QStringLiteral("url")).toString());
+    if (!url.isLocalFile()) {
+        return false;
+    }
+
+    const auto normalizedUrl = QUrl::fromLocalFile(QFileInfo(url.toLocalFile()).absoluteFilePath()).toString();
+    ensureCollectionIndexes();
+    const auto rowIt = s_trackRowByUrl.constFind(normalizedUrl);
+    if (rowIt == s_trackRowByUrl.constEnd() || rowIt.value() < 0 || rowIt.value() >= s_cachedTracks.size()) {
+        return false;
+    }
+
+    auto track = s_cachedTracks.at(rowIt.value());
+    for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
+        const auto keyIt = FMH::MODEL_NAME_KEY.constFind(it.key());
+        if (keyIt != FMH::MODEL_NAME_KEY.constEnd()) {
+            track.insert(keyIt.value(), it.value().toString());
+        }
+    }
+
+    s_cachedTracks[rowIt.value()] = track;
+    invalidateCollectionIndexes();
+    ensureCollectionIndexes();
+
+    auto *inst = instance();
+    Q_EMIT inst->trackMetadataChanged(FMH::toMap(track));
+    Q_EMIT inst->collectionChanged();
+    return true;
 }
 
 FMH::MODEL_LIST vvave::albums()

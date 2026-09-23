@@ -26,7 +26,6 @@ Pulpo::Pulpo(QObject *parent)
 
 Pulpo::~Pulpo()
 {
-    qDebug() << "DELETING PULPO INSTANCE";
 }
 
 void Pulpo::request(const PULPO::REQUEST &request)
@@ -39,7 +38,6 @@ void Pulpo::request(const PULPO::REQUEST &request)
     }
 
     if (this->req.services.isEmpty()) {
-        qWarning() << "Please register at least one Pulpo Service";
         Q_EMIT this->error();
         return;
     }

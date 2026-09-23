@@ -220,21 +220,6 @@ Maui.Page
 
     Component
     {
-        id: _metadataDialogComponent
-
-        MetadataDialog
-        {
-            model: listModel
-            onClosed: destroy()
-            onEdited: (data, index) =>
-                      {
-                          control.list.updateMetadata(data, model.mappedToSource(index))
-                      }
-        }
-    }
-
-    Component
-    {
         id: _removeDialogComponent
 
         FB.FileListingDialog
@@ -271,6 +256,13 @@ Maui.Page
 
         onQueueClicked: Player.queueTracks([listModel.get(contextMenu.index)])
 
+        onFavoriteClicked: (favorite) =>
+        {
+            const item = listModel.get(contextMenu.index)
+            if (item && item.url)
+                root.setFavorite(item.url, favorite)
+        }
+
         onGoToArtistClicked: goToArtist(listModel.get(control.currentIndex).artist)
 
         onGoToAlbumClicked:
@@ -294,6 +286,20 @@ Maui.Page
         {
             var dialog = _removeDialogComponent.createObject(control, ({'urls' : filterSelection(listModel.get(contextMenu.index).url)}))
             dialog.open()
+        }
+    }
+
+    Component
+    {
+        id: _sectionDelegate
+
+        Maui.LabelDelegate
+        {
+            isSection: true
+            width: ListView.view.width
+            text: control.listModel.sort === "adddate" || control.listModel.sort === "releasedate"
+                  ? Maui.Handy.formatDate(Date(section), "MM/dd/yyyy")
+                  : String(section)
         }
     }
 
@@ -327,14 +333,7 @@ Maui.Page
 
         section.property: control.group ? control.listModel.sort : ""
         section.criteria: control.listModel.sort === "title" ?  ViewSection.FirstCharacter : ViewSection.FullString
-        section.delegate: Maui.LabelDelegate
-        {
-            isSection: true
-            width: ListView.view.width
-            //            iconSource: "view-media-artist"
-            text: control.listModel.sort === "adddate" || control.listModel.sort === "releasedate" ? Maui.Handy.formatDate(Date(section), "MM/dd/yyyy") : String(section)
-
-        }
+        section.delegate: control.group ? _sectionDelegate : null
 
         model: Maui.BaseModel
         {
@@ -454,6 +453,9 @@ Maui.Page
         selectIndex(index)
         contextMenu.index = index
         contextMenu.titleInfo = listModel.get(contextMenu.index)
+        contextMenu.favorite = contextMenu.titleInfo && contextMenu.titleInfo.url
+                             ? FB.Tagging.isFav(contextMenu.titleInfo.url)
+                             : false
         contextMenu.show()
         rowPressed(index)
     }

@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantMap>
 
 namespace TagLib
 {
@@ -15,7 +16,7 @@ public:
     TagInfo(QObject *parent = nullptr);
 
     ~TagInfo();
-    bool isNull();
+    bool isNull() const;
     QString getAlbum() const;
     QString getTitle() const;
     QString getArtist() const;
@@ -23,6 +24,7 @@ public:
     QString getGenre() const;
     QString fileName() const;
     QString getComment() const;
+    QString getArtwork() const;
     int getDuration() const;
     uint getYear() const;
 
@@ -34,6 +36,8 @@ public:
     void setArtist(const QString &artist);
     void setGenre(const QString &genre);
     void setComment(const QString &comment);
+
+    bool updateMetadata(const QVariantMap &data);
 
 private:
     TagLib::FileRef *file = nullptr;

@@ -34,6 +34,7 @@ private:
 
     void setList();
     void reload(bool force = false);
+    void syncTrackMetadata(const QVariantMap &data);
 
 Q_SIGNALS:
     void queryChanged();
@@ -63,7 +64,7 @@ public Q_SLOTS:
     void refresh();
     bool update(const QVariantMap &data, const int &index);
     
-    void updateMetadata(const QVariantMap &data, const int &index);
+    bool updateMetadata(const QVariantMap &data, const int &index);
 
     bool move(const int &index, const int &to);
 

@@ -47,10 +47,17 @@ int MetadataEditor::year() const
     return m_year;
 }
 
+QString MetadataEditor::artwork() const
+{
+    return m_artwork;
+}
+
 void MetadataEditor::setUrl(QUrl url)
 {
-    if (m_url == url)
+    if (m_url == url) {
+        getData();
         return;
+    }
 
     m_url = url;
     Q_EMIT urlChanged(m_url);
@@ -58,8 +65,9 @@ void MetadataEditor::setUrl(QUrl url)
 
 void MetadataEditor::setTitle(QString title)
 {
-    if (m_title == title)
+    if (m_title == title) {
         return;
+    }
 
     m_title = title;
     m_tag->setTitle(m_title);
@@ -68,8 +76,9 @@ void MetadataEditor::setTitle(QString title)
 
 void MetadataEditor::setArtist(QString artist)
 {
-    if (m_artist == artist)
+    if (m_artist == artist) {
         return;
+    }
 
     m_artist = artist;
     m_tag->setArtist(m_artist);
@@ -78,8 +87,9 @@ void MetadataEditor::setArtist(QString artist)
 
 void MetadataEditor::setAlbum(QString album)
 {
-    if (m_album == album)
+    if (m_album == album) {
         return;
+    }
 
     m_album = album;
     m_tag->setAlbum(m_album);
@@ -88,8 +98,9 @@ void MetadataEditor::setAlbum(QString album)
 
 void MetadataEditor::setTrack(int track)
 {
-    if (m_track == track)
+    if (m_track == track) {
         return;
+    }
 
     m_track = track;
     m_tag->setTrack(m_track);
@@ -98,8 +109,9 @@ void MetadataEditor::setTrack(int track)
 
 void MetadataEditor::setGenre(QString genre)
 {
-    if (m_genre == genre)
+    if (m_genre == genre) {
         return;
+    }
 
     m_genre = genre;
     m_tag->setGenre(m_genre);
@@ -108,8 +120,9 @@ void MetadataEditor::setGenre(QString genre)
 
 void MetadataEditor::setComment(QString comment)
 {
-    if (m_comment == comment)
+    if (m_comment == comment) {
         return;
+    }
 
     m_comment = comment;
     m_tag->setComment(m_comment);
@@ -118,17 +131,25 @@ void MetadataEditor::setComment(QString comment)
 
 void MetadataEditor::setYear(int year)
 {
-    if (m_year == year)
+    if (m_year == year) {
         return;
+    }
 
     m_year = year;
     m_tag->setYear(m_year);
     Q_EMIT yearChanged(m_year);
 }
 
+bool MetadataEditor::save(const QVariantMap &data)
+{
+    const bool saved = m_tag->updateMetadata(data);
+    return saved;
+}
+
 void MetadataEditor::getData()
 {
-    m_tag->setFile(this->m_url.toLocalFile());
+    const auto localPath = this->m_url.toLocalFile();
+    m_tag->setFile(localPath);
 
     m_title = m_tag->getTitle();
     Q_EMIT this->titleChanged(m_title);
@@ -150,4 +171,7 @@ void MetadataEditor::getData()
 
     m_comment = m_tag->getComment();
     Q_EMIT this->commentChanged(m_comment);
+
+    m_artwork = m_tag->getArtwork();
+    Q_EMIT this->artworkChanged(m_artwork);
 }

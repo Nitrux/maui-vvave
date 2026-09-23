@@ -16,6 +16,7 @@ void AlbumsModel::componentComplete()
     m_componentCompleted = true;
     connect(vvave::instance(), &vvave::collectionChanged, this, &AlbumsModel::setList);
     connect(this, &AlbumsModel::queryChanged, this, &AlbumsModel::setList);
+    connect(this, &AlbumsModel::artistChanged, this, &AlbumsModel::setList);
     if (m_autoPopulate) {
         reload(true);
     }
@@ -38,6 +39,21 @@ void AlbumsModel::setQuery(const QUERY &query)
 AlbumsModel::QUERY AlbumsModel::getQuery() const
 {
     return this->query;
+}
+
+QString AlbumsModel::getArtist() const
+{
+    return m_artist;
+}
+
+void AlbumsModel::setArtist(const QString &artist)
+{
+    if (m_artist == artist) {
+        return;
+    }
+
+    m_artist = artist;
+    Q_EMIT artistChanged();
 }
 
 bool AlbumsModel::autoPopulate() const
@@ -75,6 +91,11 @@ void AlbumsModel::reload(bool force)
 
     if (this->query == AlbumsModel::QUERY::ALBUMS) {
         this->list = vvave::albums();
+        if (!m_artist.isEmpty()) {
+            this->list.erase(std::remove_if(this->list.begin(), this->list.end(), [this](const FMH::MODEL &item) {
+                return item[FMH::MODEL_KEY::ARTIST].compare(m_artist, Qt::CaseInsensitive) != 0;
+            }), this->list.end());
+        }
     } else if (this->query == AlbumsModel::QUERY::ARTISTS) {
         this->list = vvave::artists();
     }

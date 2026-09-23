@@ -9,6 +9,7 @@ class AlbumsModel : public MauiList
     Q_OBJECT
     Q_PROPERTY(AlbumsModel::QUERY query READ getQuery WRITE setQuery NOTIFY queryChanged())
     Q_PROPERTY(bool autoPopulate READ autoPopulate WRITE setAutoPopulate NOTIFY autoPopulateChanged)
+    Q_PROPERTY(QString artist READ getArtist WRITE setArtist NOTIFY artistChanged)
 
 public:
     enum QUERY : uint_fast8_t { ARTISTS = FMH::MODEL_KEY::ARTIST, ALBUMS = FMH::MODEL_KEY::ALBUM };
@@ -24,10 +25,13 @@ public:
     AlbumsModel::QUERY getQuery() const;
     bool autoPopulate() const;
     void setAutoPopulate(bool autoPopulate);
+    QString getArtist() const;
+    void setArtist(const QString &artist);
 
 private:
     FMH::MODEL_LIST list;
     bool m_autoPopulate = true;
+    QString m_artist;
     bool m_componentCompleted = false;
 
     void setList();
@@ -42,4 +46,5 @@ public Q_SLOTS:
 Q_SIGNALS:
     void queryChanged();
     void autoPopulateChanged(bool autoPopulate);
+    void artistChanged();
 };

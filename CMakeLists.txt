@@ -58,7 +58,7 @@ find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
 
 find_package(MauiKit4 ${REQUIRED_MAUIKIT_VERSION} REQUIRED COMPONENTS FileBrowsing Audio)
 
-find_package(Taglib 1.4 REQUIRED)
+find_package(Taglib 2.0 REQUIRED)
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS DBus Widgets)
 
 if(${ECM_SOURCE_UNDER_VERSION_CONTROL})

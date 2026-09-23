@@ -99,6 +99,7 @@ Q_SIGNALS:
     void canPlayChanged();
     void modelChanged(TracksModel *model);
     void currentTrackChanged(QVariantMap currentTrack);
+    void playbackTrackChanged();
     void currentIndexChanged(int currentIndex);
     void missingFile(QVariantMap track);
     void playModeChanged(Playlist::PlayMode playMode);

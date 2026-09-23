@@ -10,8 +10,10 @@ Maui.ContextualMenu
 
     property int index
     property var titleInfo: ({})
+    property bool favorite: false
 
     signal queueClicked()
+    signal favoriteClicked(bool favorite)
     signal goToArtistClicked()
     signal goToAlbumClicked()
     signal copyPathClicked()
@@ -42,6 +44,13 @@ Maui.ContextualMenu
         {
             queueClicked()
         }
+    }
+
+    MenuItem
+    {
+        text: control.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
+        icon.name: "love"
+        onTriggered: control.favoriteClicked(!control.favorite)
     }
 
     MenuSeparator{}

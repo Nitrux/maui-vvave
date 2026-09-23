@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariantMap>
 
 class TagInfo;
 class MetadataEditor : public QObject
@@ -16,6 +17,7 @@ class MetadataEditor : public QObject
     Q_PROPERTY(QString genre READ genre WRITE setGenre NOTIFY genreChanged)
     Q_PROPERTY(QString comment READ comment WRITE setComment NOTIFY commentChanged)
     Q_PROPERTY(int year READ year WRITE setYear NOTIFY yearChanged)
+    Q_PROPERTY(QString artwork READ artwork NOTIFY artworkChanged)
 
 public:
     explicit MetadataEditor(QObject *parent = nullptr);
@@ -30,6 +32,7 @@ public:
     QString comment() const;
 
     int year() const;
+    QString artwork() const;
 
 public Q_SLOTS:
     void setUrl(QUrl url);
@@ -47,6 +50,8 @@ public Q_SLOTS:
     void setComment(QString comment);
 
     void setYear(int year);
+
+    bool save(const QVariantMap &data);
 
 private:
     TagInfo *m_tag;
@@ -67,6 +72,7 @@ private:
     QString m_comment;
 
     int m_year;
+    QString m_artwork;
 
 Q_SIGNALS:
     void urlChanged(QUrl url);
@@ -77,4 +83,5 @@ Q_SIGNALS:
     void genreChanged(QString genre);
     void commentChanged(QString comment);
     void yearChanged(int year);
+    void artworkChanged(QString artwork);
 };

@@ -11,7 +11,7 @@ class ArtworkFetcher : public QObject
     Q_OBJECT
 
 public:
-    void fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology);
+    void fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology, bool highResolution);
 
 Q_SIGNALS:
     void artworkReady(const QUrl &url);
@@ -23,6 +23,7 @@ class AsyncImageResponse : public QQuickImageResponse
 public:
     AsyncImageResponse(const QString &id, const QSize &requestedSize);
     QQuickTextureFactory *textureFactory() const override;
+    QString errorString() const override;
     void complete(const QImage &image);
 
 private:
@@ -31,6 +32,7 @@ private:
     QString m_id;
     QSize m_requestedSize;
     QImage m_image;
+    QString m_errorString;
     bool m_completed = false;
 };
 

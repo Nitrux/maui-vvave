@@ -3,7 +3,6 @@ import QtQml
 
 import QtQuick.Layouts
 import QtQuick.Controls
-import QtQuick.Effects
 
 import org.mauikit.controls as Maui
 import org.mauikit.filebrowsing as FB
@@ -267,25 +266,49 @@ Maui.Page
                     Layout.fillHeight: true
                     Layout.preferredWidth: Maui.Style.rowHeight
 
-                    AnimatedImage
+                    Item
                     {
-                        id: _playingIcon
-                        height: 16
-                        width: height
-                        playing: root.isPlaying && Maui.Style.enableEffects
+                        id: _playingWaveform
                         anchors.centerIn: parent
-                        source: "qrc:/assets/playing.gif"
-                        visible: GraphicsInfo.api === GraphicsInfo.Software
-                    }
+                        width: 14
+                        height: 16
 
-                    MultiEffect
-                    {
-                        anchors.fill: _playingIcon
-                        source: _playingIcon
-                        colorization: 1.0
-                        contrast: 1.0
-                        colorizationColor: "#fafafa"
-                        visible: GraphicsInfo.api !== GraphicsInfo.Software
+                        Repeater
+                        {
+                            model: 4
+
+                            delegate: Rectangle
+                            {
+                                x: index * 4
+                                y: (parent.height - height) / 2
+                                width: 2
+                                height: 4 + (index % 3) * 2
+                                radius: width / 2
+                                color: delegate.label1.color
+
+                                SequentialAnimation on height
+                                {
+                                    running: delegate.mindex === currentTrackIndex
+                                             && root.isPlaying
+                                             && Maui.Style.enableEffects
+                                    loops: Animation.Infinite
+
+                                    NumberAnimation
+                                    {
+                                        to: 14 - (index % 2) * 3
+                                        duration: 150 + index * 35
+                                        easing.type: Easing.InOutSine
+                                    }
+
+                                    NumberAnimation
+                                    {
+                                        to: 4 + (index % 3) * 2
+                                        duration: 170 + index * 30
+                                        easing.type: Easing.InOutSine
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -24,7 +24,9 @@ static inline void fixArtworkImageFileName(QString &title)
     title.replace("&", "_");
 }
 
-static inline bool artworkCache(FMH::MODEL &track, const FMH::MODEL_KEY &type = FMH::MODEL_KEY::ID)
+static inline bool artworkCache(FMH::MODEL &track,
+                                const FMH::MODEL_KEY &type = FMH::MODEL_KEY::ID,
+                                const QString &suffix = QString())
 {
     QDirIterator it(CachePath.toLocalFile(), QDir::Files, QDirIterator::NoIteratorFlags);
     while (it.hasNext()) {
@@ -34,6 +36,7 @@ static inline bool artworkCache(FMH::MODEL &track, const FMH::MODEL_KEY &type = 
         case FMH::MODEL_KEY::ALBUM: {
             QString name = track[FMH::MODEL_KEY::ARTIST] + "_" + track[FMH::MODEL_KEY::ALBUM];
             fixArtworkImageFileName(name);
+            name += suffix;
 
             if (fileName == name) {
                 track.insert(FMH::MODEL_KEY::ARTWORK, file.toString());
@@ -46,6 +49,7 @@ static inline bool artworkCache(FMH::MODEL &track, const FMH::MODEL_KEY &type = 
         case FMH::MODEL_KEY::ARTIST: {
             auto name = track[FMH::MODEL_KEY::ARTIST];
             fixArtworkImageFileName(name);
+            name += suffix;
 
             if (fileName == name) {
                 track.insert(FMH::MODEL_KEY::ARTWORK, file.toString());

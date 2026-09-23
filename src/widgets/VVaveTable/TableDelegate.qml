@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 import org.mauikit.controls as Maui
 
+import ".."
+
 Maui.ListBrowserDelegate
 {
     id: control
@@ -15,6 +17,10 @@ Maui.ListBrowserDelegate
     readonly property string album : String(model.album || "").trim()
     readonly property string title : model.title
     readonly property url url : model.url
+    readonly property string artwork: {
+        const value = String(model.artwork || "").trim()
+        return value.toUpperCase() === "UNKNOWN" ? "" : value
+    }
     readonly property int track : model.track
 
     property bool sameAlbum : false
@@ -22,13 +28,24 @@ Maui.ListBrowserDelegate
 
     isCurrentItem: ListView.isCurrentItem || checked
     draggable: true
-    iconSource: "qrc:/assets/cover.png"
+    iconSource: "qrc:/assets/cover_32x32.svg"
+    template.iconComponent: ArtworkItem
+    {
+        fallbackSource: "qrc:/assets/cover_32x32.svg"
+        imageSource: control.imageSource
+        fallbackColor: Maui.ColorUtils.tintWithAlpha(control.effectiveForegroundColor, Maui.Theme.highlightColor, 0.2)
+        iconSizeHint: control.iconSizeHint
+        maskRadius: control.maskRadius
+    }
 
     label1.text: control.number ? control.track + ". " + control.title :  control.title
     label2.text: control.artist + " • " + control.album
     label2.visible: control.coverArt ? !control.sameAlbum : true
 
     iconVisible: !control.sameAlbum && control.coverArt
-    imageSource: coverArt ? "image://artwork/album:" + encodeURIComponent(String(control.artist || "")) + ":" + encodeURIComponent(String(control.album || "")) : ""
+    imageSource: coverArt ? (control.artwork.length > 0
+                               ? control.artwork
+                               : "image://artwork/album:" + encodeURIComponent(control.artist) + ":" + encodeURIComponent(control.album))
+                          : ""
 
 }

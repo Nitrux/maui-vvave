@@ -25,6 +25,7 @@ namespace
 {
 constexpr qint64 kMissingArtworkRetryMs = 10 * 60 * 1000;
 constexpr int kArtworkFetchTimeoutMs = 4000;
+constexpr int kHighResolutionArtworkFetchTimeoutMs = 30000;
 constexpr int kMaxConcurrentArtworkFetches = 2;
 constexpr int kMinOnlineFetchEdge = 56;
 
@@ -50,18 +51,6 @@ int s_activeFetches = 0;
 int artworkCostKb(const QImage &img)
 {
     return static_cast<int>(std::max(qint64(1), img.sizeInBytes() / 1024));
-}
-
-QImage fallbackArtwork()
-{
-    static QImage fallback(QStringLiteral(":/assets/cover.png"));
-    if (!fallback.isNull()) {
-        return fallback;
-    }
-
-    QImage transparent(1, 1, QImage::Format_ARGB32_Premultiplied);
-    transparent.fill(Qt::transparent);
-    return transparent;
 }
 
 QString normalizedArtworkField(const QString &value)
@@ -112,11 +101,12 @@ ArtworkRequestData parseArtworkRequest(const QString &id)
         request.album = QUrl::fromPercentEncoding(albumPayload.toUtf8());
     }
 
-    request.unknownMetadata = (request.type == QStringLiteral("artist") && isUnknownMetadataValue(request.artist))
-        || (request.type == QStringLiteral("album")
-            && (isUnknownMetadataValue(request.artist) || isUnknownMetadataValue(request.album)));
+    const bool artistArtwork = request.type == QStringLiteral("artist") || request.type == QStringLiteral("focusArtist");
+    const bool albumArtwork = request.type == QStringLiteral("album") || request.type == QStringLiteral("focusAlbum");
+    request.unknownMetadata = (artistArtwork && isUnknownMetadataValue(request.artist))
+        || (albumArtwork && (isUnknownMetadataValue(request.artist) || isUnknownMetadataValue(request.album)));
 
-    request.modelKey = request.type == QStringLiteral("artist") ? FMH::MODEL_KEY::ARTIST : FMH::MODEL_KEY::ALBUM;
+    request.modelKey = artistArtwork ? FMH::MODEL_KEY::ARTIST : FMH::MODEL_KEY::ALBUM;
     request.cacheKey = cacheKeyForRequest(request.type, request.artist, request.album);
     request.valid = !request.type.isEmpty();
     return request;
@@ -187,11 +177,10 @@ void completePendingResponses(const QString &cacheKey, const QImage &image, bool
     }
 
     const auto pending = s_pendingResponses.take(cacheKey);
-    const QImage finalImage = image.isNull() ? fallbackArtwork() : image;
-
+    // Missing artwork completes as an image error so Maui.IconItem reveals the delegate iconSource.
     for (const auto &response : pending) {
         if (response) {
-            response->complete(finalImage);
+            response->complete(image);
         }
     }
 
@@ -243,12 +232,17 @@ void startArtworkFetch(const ArtworkRequestData &request)
         finalizeFetch(fetchedImage, false);
     });
 
-    QTimer::singleShot(kArtworkFetchTimeoutMs, vvave::instance(), [finalizeFetch]() {
+    const int fetchTimeout = request.type.startsWith(QStringLiteral("focus"))
+        ? kHighResolutionArtworkFetchTimeoutMs
+        : kArtworkFetchTimeoutMs;
+    QTimer::singleShot(fetchTimeout, vvave::instance(), [finalizeFetch]() {
         finalizeFetch(QImage(), true);
     });
 
     s_activeFetches++;
-    artworkFetcher->fetch(data, request.modelKey == FMH::MODEL_KEY::ALBUM ? PULPO::ONTOLOGY::ALBUM : PULPO::ONTOLOGY::ARTIST);
+    artworkFetcher->fetch(data,
+                          request.modelKey == FMH::MODEL_KEY::ALBUM ? PULPO::ONTOLOGY::ALBUM : PULPO::ONTOLOGY::ARTIST,
+                          request.type.startsWith(QStringLiteral("focus")));
 }
 
 void processArtworkQueue()
@@ -279,12 +273,10 @@ void AsyncImageResponse::finishWithImage(const QImage &image)
 
     if (!image.isNull()) {
         m_image = image;
+        m_errorString.clear();
     } else {
-        m_image = QImage(":/assets/cover.png");
-        if (m_image.isNull()) {
-            m_image = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
-            m_image.fill(Qt::transparent);
-        }
+        m_image = QImage();
+        m_errorString.clear();
     }
     m_completed = true;
     Q_EMIT this->finished();
@@ -301,14 +293,16 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
 {
     const auto request = parseArtworkRequest(id);
     if (!request.valid) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (request.unknownMetadata) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
+
+    const bool highResolutionRequest = request.type.startsWith(QStringLiteral("focus"));
 
     const QImage *cachedImagePtr = s_sessionArtworkCache.object(request.cacheKey);
     if (cachedImagePtr && !cachedImagePtr->isNull()) {
@@ -317,32 +311,36 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     }
 
     FMH::MODEL data = {{FMH::MODEL_KEY::ARTIST, request.artist}, {FMH::MODEL_KEY::ALBUM, request.album}};
+    const QString cacheSuffix = highResolutionRequest ? QStringLiteral("_highres") : QString();
 
-    if (BAE::artworkCache(data, request.modelKey)) {
+    if (BAE::artworkCache(data, request.modelKey, cacheSuffix)) {
         const auto cachedPath = QUrl(data[FMH::MODEL_KEY::ARTWORK]).toLocalFile();
         const auto cachedImage = QImage(cachedPath);
         if (cachedImage.isNull()) {
             removeInvalidArtworkFile(cachedPath);
-            finishWithImage(fallbackArtwork());
+            if (!highResolutionRequest) {
+                finishWithImage(QImage());
+                return;
+            }
         } else {
             s_sessionArtworkCache.insert(request.cacheKey, new QImage(cachedImage), artworkCostKb(cachedImage));
             finishWithImage(cachedImage);
+            return;
         }
-        return;
     }
 
     if (!vvave::instance()->fetchArtwork()) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (shouldDeferOnlineFetch(m_requestedSize)) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
     if (shouldSkipFetchForRecentMiss(request.cacheKey)) {
-        finishWithImage(fallbackArtwork());
+        finishWithImage(QImage());
         return;
     }
 
@@ -353,22 +351,26 @@ AsyncImageResponse::AsyncImageResponse(const QString &id, const QSize &requested
     }
 
     s_inFlightFetches.insert(request.cacheKey);
-    s_fetchQueue.enqueue(request);
+    if (highResolutionRequest) {
+        s_fetchQueue.prepend(request);
+    } else {
+        s_fetchQueue.enqueue(request);
+    }
     processArtworkQueue();
+}
+
+QString AsyncImageResponse::errorString() const
+{
+    return m_errorString;
 }
 
 QQuickTextureFactory *AsyncImageResponse::textureFactory() const
 {
-    if (!m_image.isNull()) {
-        return QQuickTextureFactory::textureFactoryForImage(m_image);
+    if (m_image.isNull()) {
+        return nullptr;
     }
 
-    QImage fallback(":/assets/cover.png");
-    if (fallback.isNull()) {
-        fallback = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
-        fallback.fill(Qt::transparent);
-    }
-    return QQuickTextureFactory::textureFactoryForImage(fallback);
+    return QQuickTextureFactory::textureFactoryForImage(m_image);
 }
 
 QQuickImageResponse *ArtworkProvider::requestImageResponse(const QString &id, const QSize &requestedSize)
@@ -377,7 +379,7 @@ QQuickImageResponse *ArtworkProvider::requestImageResponse(const QString &id, co
     return response;
 }
 
-void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
+void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology, bool highResolution)
 {
     PULPO::REQUEST request;
     request.track = data;
@@ -385,7 +387,7 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
     request.services = {PULPO::SERVICES::LastFm, PULPO::SERVICES::Spotify};
     request.info = {PULPO::INFO::ARTWORK};
     QPointer<ArtworkFetcher> self(this);
-    request.callback = [self](PULPO::REQUEST request, PULPO::RESPONSES responses) {
+    request.callback = [self, highResolution](PULPO::REQUEST request, PULPO::RESPONSES responses) {
         if (!self) {
             return;
         }
@@ -394,11 +396,24 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
 
         for (const auto &res : responses) {
             if (res.context == PULPO::PULPO_CONTEXT::IMAGE) {
-                auto imageUrl = res.value.toString();
+                auto imageUrl = res.value.toUrl();
+
+                if (highResolution && imageUrl.host().endsWith(QStringLiteral("freetls.fastly.net"))) {
+                    auto path = imageUrl.path();
+                    const QString marker = QStringLiteral("/i/u/");
+                    const auto sizeStart = path.indexOf(marker);
+                    const auto valueStart = sizeStart + marker.size();
+                    const auto sizeEnd = path.indexOf(QChar('/'), valueStart);
+                    if (sizeStart >= 0 && sizeEnd > valueStart) {
+                        path.replace(valueStart, sizeEnd - valueStart, QStringLiteral("ar0"));
+                        imageUrl.setPath(path);
+                    }
+                }
 
                 if (!imageUrl.isEmpty()) {
                     requestedDownload = true;
-                    auto downloader = new FMH::Downloader;
+                    auto downloader = new FMH::Downloader(self.data());
+                    QObject::connect(self.data(), &QObject::destroyed, downloader, &FMH::Downloader::stop);
                     QObject::connect(downloader, &FMH::Downloader::fileSaved, [self, downloader](QString path) mutable {
                         downloader->deleteLater();
                         if (!self) {
@@ -412,29 +427,32 @@ void ArtworkFetcher::fetch(FMH::MODEL data, PULPO::ONTOLOGY ontology)
                             return;
                         }
                         Q_UNUSED(message)
-                        Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
+                        Q_EMIT self->artworkReady(QUrl());
                     });
 
-                    const auto format = res.value.toUrl().fileName().endsWith(".png") ? ".png" : ".jpg";
+                    const auto format = imageUrl.fileName().endsWith(".png") ? ".png" : ".jpg";
                     QString name = !request.track[FMH::MODEL_KEY::ALBUM].isEmpty() ? request.track[FMH::MODEL_KEY::ARTIST] + "_" + request.track[FMH::MODEL_KEY::ALBUM] : request.track[FMH::MODEL_KEY::ARTIST];
 
                     BAE::fixArtworkImageFileName(name);
+                    if (highResolution) {
+                        name += QStringLiteral("_highres");
+                    }
 
-                    downloader->downloadFile(QUrl(imageUrl), QUrl(BAE::CachePath.toString() + name + format));
+                    downloader->downloadFile(imageUrl, QUrl(BAE::CachePath.toString() + name + format));
                     break;
                 }
             }
         }
 
         if (!requestedDownload) {
-            Q_EMIT self->artworkReady(QUrl(":/assets/cover.png"));
+            Q_EMIT self->artworkReady(QUrl());
         }
     };
 
     auto pulpo = new Pulpo;
     QObject::connect(pulpo, &Pulpo::finished, pulpo, &Pulpo::deleteLater);
     QObject::connect(pulpo, &Pulpo::error, this, [this, pulpo]() {
-        Q_EMIT this->artworkReady(QUrl(":/assets/cover.png"));
+        Q_EMIT this->artworkReady(QUrl());
         pulpo->deleteLater();
     });
 

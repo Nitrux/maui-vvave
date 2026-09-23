@@ -12,7 +12,6 @@ lastfm::lastfm()
 
 lastfm::~lastfm()
 {
-    qDebug() << "DELETING LASTFM INSTANCE";
 }
 
 void lastfm::set(const PULPO::REQUEST &request)
@@ -60,8 +59,6 @@ void lastfm::set(const PULPO::REQUEST &request)
     }
     }
 
-    qDebug() << "[lastfm service]: " << url;
-
     this->retrieve(url);
 }
 
@@ -71,12 +68,10 @@ void lastfm::parseArtist(const QByteArray &array)
     QDomDocument doc;
 
     if (!doc.setContent(xmlData)) {
-        qDebug() << "LASTFM XML FAILED 1" << this->request.track;
         ERROR(this->request);
     }
 
     if (doc.documentElement().toElement().attributes().namedItem("status").nodeValue() != "ok") {
-        qDebug() << "LASTFM XML FAILED 2" << this->request.track;
         ERROR(this->request);
     }
 
@@ -106,16 +101,17 @@ void lastfm::parseAlbum(const QByteArray &array)
     QDomDocument doc;
 
     if (!doc.setContent(xmlData)) {
-        qDebug() << "LASTFM XML FAILED 1" << this->request.track;
         ERROR(this->request);
     }
 
     if (doc.documentElement().toElement().attributes().namedItem("status").nodeValue() != "ok") {
-        qDebug() << "LASTFM XML FAILED 2" << this->request.track;
         ERROR(this->request);
     }
 
     const auto nodeList = doc.documentElement().namedItem("album").childNodes();
+    const QStringList imageSizes = {"small", "medium", "large", "extralarge", "mega"};
+    QString albumArtUrl;
+    int albumArtPriority = -1;
 
     for (int i = 0; i < nodeList.count(); i++) {
         QDomNode n = nodeList.item(i);
@@ -126,17 +122,15 @@ void lastfm::parseAlbum(const QByteArray &array)
                 if (this->request.info.contains(INFO::ARTWORK)) {
                     const auto imgSize = n.attributes().namedItem("size").nodeValue();
 
-                    if (imgSize == "large" && n.isElement()) {
-                        const auto albumArt_url = n.toElement().text();
-                        this->responses << PULPO::RESPONSE{PULPO_CONTEXT::IMAGE, albumArt_url};
+                    const auto priority = imageSizes.indexOf(imgSize);
+                    const auto imageUrl = n.toElement().text();
 
-                        if (this->request.info.size() == 1)
-                            break;
-                        else
-                            continue;
+                    if (!imageUrl.isEmpty() && priority > albumArtPriority) {
+                        albumArtUrl = imageUrl;
+                        albumArtPriority = priority;
+                    }
 
-                    } else
-                        continue;
+                    continue;
 
                 } else
                     continue;
@@ -145,7 +139,6 @@ void lastfm::parseAlbum(const QByteArray &array)
             if (n.nodeName() == "wiki") {
                 if (this->request.info.contains(INFO::WIKI)) {
                     const auto albumWiki = n.childNodes().item(1).toElement().text();
-                    // qDebug()<<"Fetching AlbumWiki LastFm[]";
 
                     this->responses << PULPO::RESPONSE{PULPO_CONTEXT::WIKI, albumWiki};
 
@@ -178,6 +171,10 @@ void lastfm::parseAlbum(const QByteArray &array)
                     continue;
             }
         }
+    }
+
+    if (!albumArtUrl.isEmpty()) {
+        this->responses << PULPO::RESPONSE{PULPO_CONTEXT::IMAGE, albumArtUrl};
     }
 
     Q_EMIT this->responseReady(this->request, this->responses);
