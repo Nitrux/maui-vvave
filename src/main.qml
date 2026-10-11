@@ -565,7 +565,8 @@ Maui.ApplicationWindow
             anchors.fill: parent
             background: null
             headBar.visible: false
-            footerMargins: Maui.Style.space.tiny
+            floatingFooter: true
+            footerMargins: Maui.Style.contentMargins
             footBar.preferredHeight: Maui.Style.toolBarHeightAlt + 2
             footBar.topPadding: 0
             footBar.bottomPadding: 0
