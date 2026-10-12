@@ -567,6 +567,9 @@ Maui.ApplicationWindow
             headBar.visible: false
             floatingFooter: true
             footerMargins: Maui.Style.contentMargins
+            bottomMargin: root.focusView
+                         ? footerContainer.implicitHeight + (footerMargins * 2)
+                         : 0
             footBar.preferredHeight: Maui.Style.toolBarHeightAlt + 2
             footBar.topPadding: 0
             footBar.bottomPadding: 0
