@@ -2,6 +2,9 @@
 
 #include <QColor>
 #include <QObject>
+#include <QList>
+#include <QUrl>
+#include <QVariantList>
 #include <QStringList>
 #include <QVariantMap>
 

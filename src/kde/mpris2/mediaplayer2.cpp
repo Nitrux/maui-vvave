@@ -67,5 +67,3 @@ QStringList MediaPlayer2::SupportedMimeTypes() const
 
     return QStringList();
 }
-
-#include "moc_mediaplayer2.cpp"

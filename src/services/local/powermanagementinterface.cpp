@@ -219,6 +219,3 @@ void PowerManagementInterface::uninhibitSleepGnomeWorkspace()
     QObject::connect(replyWatcher, &QDBusPendingCallWatcher::finished,
                      this, &PowerManagementInterface::uninhibitDBusCallFinishedGnomeWorkspace);
 }
-
-
-#include "moc_powermanagementinterface.cpp"

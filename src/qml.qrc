@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/qt/qml/app/maui/vvave">
+        <file>main.qml</file>
+        <file>widgets/ArtworkItem.qml</file>
+        <file>widgets/LibraryView.qml</file>
+        <file>widgets/MainPlaylist/MainPlaylist.qml</file>
+        <file>widgets/FloatingDisk.qml</file>
+        <file>widgets/SelectionBar.qml</file>
+        <file>widgets/SettingsView/SettingsDialog.qml</file>
+        <file>widgets/SettingsView/ShortcutsDialog.qml</file>
+        <file>widgets/MetadataDialog.qml</file>
+        <file>widgets/VVaveTable/TableDelegate.qml</file>
+        <file>widgets/VVaveTable/TableMenu.qml</file>
+        <file>widgets/VVaveTable/VVaveTable.qml</file>
+        <file>utils/Player.js</file>
+        <file>db/Queries.js</file>
+    </qresource>
+</RCC>

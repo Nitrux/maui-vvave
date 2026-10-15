@@ -488,5 +488,3 @@ void MediaPlayer2Player::signalPropertiesChange(const QString &property, const Q
 
     QDBusConnection::sessionBus().send(msg);
 }
-
-#include "moc_mediaplayer2player.cpp"

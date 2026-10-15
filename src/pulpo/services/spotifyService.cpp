@@ -3,7 +3,6 @@
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QByteArrayView>
 #include <QtGlobal>
 
 using namespace PULPO;
@@ -69,7 +68,7 @@ void spotify::set(const PULPO::REQUEST &request)
 
     auto credentials = clientId + ":" + clientSecret;
     auto auth = credentials.toLocal8Bit().toBase64();
-    auto header = QByteArrayView("Basic ") + QByteArrayView(auth);
+    auto header = QByteArrayLiteral("Basic ") + auth;
 
     auto sp_request = QNetworkRequest(QUrl("https://accounts.spotify.com/api/token"));
     sp_request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");

@@ -8,6 +8,7 @@
 #include <QDate>
 #include <QGuiApplication>
 
+#include <KLocalizedQmlContext>
 #include <KLocalizedString>
 
 #include "kde/mpris2/mpris2.h"
@@ -20,7 +21,7 @@
 
 #include <taglib/taglib.h>
 
-#include "../vvave_version.h"
+#include "vvave_version.h"
 
 #include "vvave.h"
 
@@ -130,7 +131,7 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
         }, Qt::QueuedConnection);
 
-    engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
+    engine.rootContext()->setContextObject(new KLocalizedQmlContext(&engine));
 
     qmlRegisterSingletonInstance<vvave>(VVAVE_URI, 1, 0, "Vvave", vvave::instance());
     qmlRegisterSingletonInstance<Server>(VVAVE_URI, 1, 0, "Server", server.get());

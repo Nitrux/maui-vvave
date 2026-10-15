@@ -122,5 +122,3 @@ void Mpris2::setShowProgressOnTaskBar(bool value)
     mShowProgressOnTaskBar = value;
     Q_EMIT showProgressOnTaskBarChanged();
 }
-
-#include "moc_mpris2.cpp"

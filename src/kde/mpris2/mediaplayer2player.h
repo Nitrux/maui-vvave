@@ -12,6 +12,7 @@
 #include <QDBusAbstractAdaptor>
 #include <QDBusMessage>
 #include <QDBusObjectPath>
+#include <QVariantMap>
 
 class Playlist;
 class Player;

@@ -7,7 +7,7 @@
 class AlbumsModel : public MauiList
 {
     Q_OBJECT
-    Q_PROPERTY(AlbumsModel::QUERY query READ getQuery WRITE setQuery NOTIFY queryChanged())
+    Q_PROPERTY(AlbumsModel::QUERY query READ getQuery WRITE setQuery NOTIFY queryChanged)
     Q_PROPERTY(bool autoPopulate READ autoPopulate WRITE setAutoPopulate NOTIFY autoPopulateChanged)
     Q_PROPERTY(QString artist READ getArtist WRITE setArtist NOTIFY artistChanged)
 

@@ -2,14 +2,15 @@
 
 #include <QObject>
 #include <QVariant>
-#include <QQmlParserStatus>
+#include <QtQml/qqmlparserstatus.h>
+#include "../../models/tracks/tracksmodel.h"
 
 class TracksModel;
 class Player;
 class Playlist : public QObject, public QQmlParserStatus
 {
-    Q_INTERFACES(QQmlParserStatus)
     Q_OBJECT
+    Q_INTERFACES(QQmlParserStatus)
 
     Q_PROPERTY(TracksModel *model WRITE setModel READ model NOTIFY modelChanged)
     Q_PROPERTY(QVariantMap currentTrack READ currentTrack NOTIFY currentTrackChanged FINAL)

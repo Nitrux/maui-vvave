@@ -8,6 +8,8 @@
 #pragma once
 
 #include <QObject>
+#include "../../services/local/player.h"
+#include "../../services/local/playlist.h"
 #include <QSharedPointer>
 #include <memory>
 
