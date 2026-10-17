@@ -29,6 +29,8 @@ set(CMAKE_AUTORCC ON)
 
 project(vvave VERSION ${VVAVE_VERSION} LANGUAGES CXX)
 
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "This project supports Linux only.")
 endif()
@@ -55,6 +57,8 @@ include(FeatureSummary)
 
 find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Concurrent Qml Quick QuickControls2 Network Xml Multimedia)
 find_package(KF6 ${REQUIRED_KF_VERSION} REQUIRED COMPONENTS I18n CoreAddons)
+set(QT_NO_PRIVATE_MODULE_WARNING ON CACHE BOOL
+    "MauiKit uses Qt's private WaylandClient API" FORCE)
 
 find_package(MauiKit4 ${REQUIRED_MAUIKIT_VERSION} REQUIRED COMPONENTS FileBrowsing Audio)
 
