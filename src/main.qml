@@ -570,9 +570,9 @@ Maui.ApplicationWindow
             bottomMargin: root.focusView
                          ? footerContainer.implicitHeight + (footerMargins * 2)
                          : 0
-            footBar.preferredHeight: root.isWide ? Maui.Style.rowHeightAlt : Maui.Style.rowHeight
-            footBar.topPadding: root.isWide ? Maui.Style.defaultPadding : Maui.Style.space.small
-            footBar.bottomPadding: root.isWide ? Maui.Style.defaultPadding : Maui.Style.space.small
+            footBar.preferredHeight: Maui.Style.rowHeightAlt
+            footBar.topPadding: Maui.Style.defaultPadding
+            footBar.bottomPadding: Maui.Style.defaultPadding
             readonly property int footerArtworkSize: Math.max(Maui.Style.iconSizes.medium, footBar.preferredHeight - (Maui.Style.space.small * 2))
             readonly property int expandedVolumeSliderWidth: Maui.Style.units.gridUnit * 6
             readonly property bool compactVolumeControl: footBar.width > 0
