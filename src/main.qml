@@ -570,9 +570,9 @@ Maui.ApplicationWindow
             bottomMargin: root.focusView
                          ? footerContainer.implicitHeight + (footerMargins * 2)
                          : 0
-            footBar.preferredHeight: Maui.Style.toolBarHeightAlt + 2
-            footBar.topPadding: 0
-            footBar.bottomPadding: 0
+            footBar.preferredHeight: root.isWide ? Maui.Style.rowHeightAlt : Maui.Style.rowHeight
+            footBar.topPadding: root.isWide ? Maui.Style.defaultPadding : Maui.Style.space.small
+            footBar.bottomPadding: root.isWide ? Maui.Style.defaultPadding : Maui.Style.space.small
             readonly property int footerArtworkSize: Math.max(Maui.Style.iconSizes.medium, footBar.preferredHeight - (Maui.Style.space.small * 2))
             readonly property int expandedVolumeSliderWidth: Maui.Style.units.gridUnit * 6
             readonly property bool compactVolumeControl: footBar.width > 0
@@ -967,6 +967,7 @@ Maui.ApplicationWindow
                 focusMode: root.focusView
                 sidebarOpen: _sideBarView.sideBar.visible && _sideBarView.sideBar.position > 0
                 menuComponent: _mainMenuComponent
+                footerContainer.bottomMargin: Maui.Style.contentMargins + _mainPage.footBar.height
 
                 onToggleSidebarRequested: root.toggleSidebar()
 
