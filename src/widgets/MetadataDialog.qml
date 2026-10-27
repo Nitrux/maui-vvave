@@ -35,7 +35,7 @@ Maui.SettingsDialog
     maxWidth: (control._fieldWidth * 2) + Maui.Style.defaultSpacing
               + (Maui.Style.contentMargins * 4)
               + (Maui.Style.defaultPadding * 2)
-    maxHeight: 760
+    maxHeight: Maui.Style.units.gridUnit * 48
     closeButtonVisible: true
     closePolicy: Popup.NoAutoClose
 
