@@ -6,7 +6,7 @@ import org.mauikit.controls as Maui
 import org.mauikit.filebrowsing as FB
 import org.maui.vvave
 
-Maui.SettingsDialog
+FB.FileListingDialog
 {
     id: control
 
@@ -31,7 +31,9 @@ Maui.SettingsDialog
 
     signal edited(var data, int index, var proxyModel, var sourceModel)
 
-    Maui.Controls.title: i18n("Edit Metadata")
+    title: i18n("Edit Metadata")
+    template.visible: true
+    template.iconVisible: false
     maxWidth: (control._fieldWidth * 2) + Maui.Style.defaultSpacing
               + (Maui.Style.contentMargins * 4)
               + (Maui.Style.defaultPadding * 2)
