@@ -5,7 +5,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-set(VVAVE_VERSION 4.0.4)
+set(VVAVE_VERSION 4.0.5)
 add_compile_definitions(APP_COPYRIGHT_NOTICE="© 2019-2025 Maui Development Team")
 
 set(CMAKE_CXX_STANDARD 17)
