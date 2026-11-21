@@ -846,11 +846,14 @@ Maui.ApplicationWindow
 
             MouseArea
             {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                y: Math.max(0, _footerEdgeSeekBarTrack.y - 3)
-                height: _footerEdgeSeekBarTrack.height + 6
-                z: parent.z + 1
+                parent: _footerEdgeSeekBar.parent
+                anchors.left: _footerEdgeSeekBar.left
+                anchors.right: _footerEdgeSeekBar.right
+                y: _footerEdgeSeekBar.y
+                height: Maui.Style.units.gridUnit
+                z: _footerEdgeSeekBar.z + 1
+                visible: _footerEdgeSeekBar.visible
+                enabled: _footerEdgeSeekBar.enabled
                 cursorShape: Qt.PointingHandCursor
 
                 onPressed: (mouse) =>
