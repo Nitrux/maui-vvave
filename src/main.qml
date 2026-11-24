@@ -570,10 +570,10 @@ Maui.ApplicationWindow
             bottomMargin: root.focusView
                          ? footerContainer.implicitHeight + (footerMargins * 2)
                          : 0
-            footBar.preferredHeight: Maui.Style.rowHeightAlt
+            footBar.preferredHeight: Maui.Style.rowHeightAlt + Maui.Style.defaultPadding
             footBar.topPadding: Maui.Style.defaultPadding
             footBar.bottomPadding: Maui.Style.defaultPadding
-            readonly property int footerArtworkSize: Math.max(Maui.Style.iconSizes.medium, footBar.preferredHeight - (Maui.Style.space.small * 2))
+            readonly property int footerArtworkSize: 32
             readonly property int expandedVolumeSliderWidth: Maui.Style.units.gridUnit * 6
             readonly property bool compactVolumeControl: footBar.width > 0
                 && footBar.width < (footBar.leftLayout.implicitWidth
@@ -638,18 +638,19 @@ Maui.ApplicationWindow
                 Layout.preferredWidth: _mainPage.footerArtworkSize
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignVCenter
-                radius: Maui.Style.radiusV
+                radius: Math.min(Maui.Style.radiusV, 3)
                 color: Maui.Theme.alternateBackgroundColor
                 clip: true
 
-                Image
+                Maui.IconItem
                 {
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectCrop
-                    source: "image://artwork/album:"
-                            + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
-                            + ":"
-                            + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : "")
+                    maskRadius: Math.min(Maui.Style.radiusV, 3)
+                    imageSource: "image://artwork/album:"
+                                 + encodeURIComponent(currentTrack && currentTrack.artist ? currentTrack.artist : "")
+                                 + ":"
+                                 + encodeURIComponent(currentTrack && currentTrack.album ? currentTrack.album : "")
                 }
             }
 

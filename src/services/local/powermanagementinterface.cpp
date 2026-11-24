@@ -9,6 +9,7 @@
 #include <KLocalizedString>
 
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
@@ -17,6 +18,15 @@
 #include <QString>
 #include <QDebug>
 #include <QGuiApplication>
+
+namespace
+{
+bool sessionBusServiceAvailable(const QString &serviceName)
+{
+    auto *interface = QDBusConnection::sessionBus().interface();
+    return interface && interface->isServiceRegistered(serviceName).value();
+}
+}
 
 class PowerManagementInterfacePrivate
 {
@@ -138,6 +148,10 @@ void PowerManagementInterface::uninhibitDBusCallFinishedGnomeWorkspace(QDBusPend
 
 void PowerManagementInterface::inhibitSleepPlasmaWorkspace()
 {
+    if (!sessionBusServiceAvailable(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"))) {
+        return;
+    }
+
     auto sessionBus = QDBusConnection::sessionBus();
 
     auto inhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
@@ -157,6 +171,10 @@ void PowerManagementInterface::inhibitSleepPlasmaWorkspace()
 
 void PowerManagementInterface::uninhibitSleepPlasmaWorkspace()
 {
+    if (!sessionBusServiceAvailable(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"))) {
+        return;
+    }
+
     auto sessionBus = QDBusConnection::sessionBus();
 
     auto uninhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
@@ -176,6 +194,10 @@ void PowerManagementInterface::uninhibitSleepPlasmaWorkspace()
 
 void PowerManagementInterface::inhibitSleepGnomeWorkspace()
 {
+    if (!sessionBusServiceAvailable(QStringLiteral("org.gnome.SessionManager"))) {
+        return;
+    }
+
     auto sessionBus = QDBusConnection::sessionBus();
 
     auto inhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.gnome.SessionManager"),
@@ -203,6 +225,10 @@ void PowerManagementInterface::inhibitSleepGnomeWorkspace()
 
 void PowerManagementInterface::uninhibitSleepGnomeWorkspace()
 {
+    if (!sessionBusServiceAvailable(QStringLiteral("org.gnome.SessionManager"))) {
+        return;
+    }
+
     auto sessionBus = QDBusConnection::sessionBus();
 
     auto uninhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.gnome.SessionManager"),

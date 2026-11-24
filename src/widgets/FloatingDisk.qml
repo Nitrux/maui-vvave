@@ -18,7 +18,7 @@ Loader
     scale: root.focusView ? 2 : 1
     opacity: root.focusView ? 0 :  1
 
-    property int radius: root.focusView || !isPlaying ? Maui.Style.radiusV : Math.min(width, height)
+    property int radius: root.focusView || !isPlaying ? Math.min(Maui.Style.radiusV, 3) : Math.min(width, height)
 
     Behavior on radius
     {

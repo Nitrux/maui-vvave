@@ -33,7 +33,7 @@ Item
         imageSource: control.imageSource
         imageSizeHint: control.imageSizeHint
         fillMode: control.fillMode
-        maskRadius: control.maskRadius
+        maskRadius: Math.min(control.maskRadius, 3)
         imageWidth: control.imageWidth
         imageHeight: control.imageHeight
     }

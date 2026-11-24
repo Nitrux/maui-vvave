@@ -1037,10 +1037,10 @@ Maui.Page
                 height: Math.max(implicitHeight, Maui.Style.rowHeight)
 
                 isCurrentItem: ListView.isCurrentItem
-                label1.text: model.title
+                label1.text: String(model.title || "").trim()
                 label2.text: {
-                    const artist = String(model.artist || "")
-                    const album = String(model.album || "")
+                    const artist = String(model.artist || "").trim()
+                    const album = String(model.album || "").trim()
                     return artist + (artist.length > 0 && album.length > 0 ? " - " : "") + album
                 }
                 label3.text: model.genre
@@ -1206,7 +1206,7 @@ Maui.Page
                         anchors.centerIn: parent
                         width: Math.min(parent.width, parent.height) * 0.9
                         height: width
-                        radius: Maui.Style.radiusV
+                        radius: Math.min(Maui.Style.radiusV, 3)
                         color: Maui.Theme.alternateBackgroundColor
                         clip: true
 
