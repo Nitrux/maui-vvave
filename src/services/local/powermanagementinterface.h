@@ -7,6 +7,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 #pragma once
 
 #include <QObject>
+#include <QString>
 
 #include <memory>
 
@@ -51,25 +52,13 @@ public Q_SLOTS:
 
 private Q_SLOTS:
 
-    void hostSleepInhibitChanged();
-
-    void inhibitDBusCallFinishedPlasmaWorkspace(QDBusPendingCallWatcher *aWatcher);
-
-    void uninhibitDBusCallFinishedPlasmaWorkspace(QDBusPendingCallWatcher *aWatcher);
-
-    void inhibitDBusCallFinishedGnomeWorkspace(QDBusPendingCallWatcher *aWatcher);
-
-    void uninhibitDBusCallFinishedGnomeWorkspace(QDBusPendingCallWatcher *aWatcher);
+    void inhibitCallFinished(QDBusPendingCallWatcher *watcher);
 
 private:
 
-    void inhibitSleepPlasmaWorkspace();
+    void requestInhibit();
 
-    void uninhibitSleepPlasmaWorkspace();
-
-    void inhibitSleepGnomeWorkspace();
-
-    void uninhibitSleepGnomeWorkspace();
+    void closeRequest(const QString &handle);
 
     std::unique_ptr<PowerManagementInterfacePrivate> d;
 

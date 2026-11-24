@@ -576,10 +576,21 @@ Maui.ApplicationWindow
             readonly property int footerArtworkSize: 32
             readonly property int expandedVolumeSliderWidth: Maui.Style.units.gridUnit * 6
             readonly property bool compactVolumeControl: footBar.width > 0
-                && footBar.width < (footBar.leftLayout.implicitWidth
+                && footBar.width < (_footerPlaybackActions.implicitWidth
+                                    + _playbackTimeLabel.implicitWidth
+                                    + Maui.Style.space.medium
+                                    + footBar.leftLayout.spacing
                                     + _footerVolumeButton.implicitWidth
                                     + expandedVolumeSliderWidth
                                     + Maui.Style.units.gridUnit * 8)
+            readonly property real footerMiddleContentMaximumWidth: Math.max(0,
+                footBar.width
+                - footBar.leftLayout.implicitWidth
+                - footBar.rightLayout.implicitWidth
+                - (footBar.forceCenterMiddleContent
+                   ? Math.abs(footBar.leftLayout.implicitWidth - footBar.rightLayout.implicitWidth)
+                   : 0)
+                - (footBar.leftLayout.spacing * (footBar.forceCenterMiddleContent ? 5 : 3)))
             property bool compactVolumePopupVisible: false
 
             onCompactVolumeControlChanged:
@@ -588,9 +599,12 @@ Maui.ApplicationWindow
                     compactVolumePopupVisible = false
             }
 
+            footBar.forceCenterMiddleContent: !compactVolumeControl
+
         footBar.leftContent: [
             Maui.ToolActions
             {
+                id: _footerPlaybackActions
                 expanded: true
                 checkable: false
                 autoExclusive: false
@@ -621,6 +635,8 @@ Maui.ApplicationWindow
 
             Label
             {
+                id: _playbackTimeLabel
+                visible: !_mainPage.compactVolumeControl
                 text: player.formatTime_ms(player.elapsed) + " / " + player.formatTime_ms(player.duration)
                 Layout.leftMargin: Maui.Style.space.medium
             }
@@ -631,7 +647,9 @@ Maui.ApplicationWindow
             spacing: Maui.Style.space.small
             Layout.alignment: Qt.AlignCenter
             visible: currentTrackIndex >= 0 && !root.focusView
-            Layout.maximumWidth: Maui.Style.units.gridUnit * 18
+            Layout.minimumWidth: 0
+            Layout.maximumWidth: Math.min(Maui.Style.units.gridUnit * 18,
+                                          _mainPage.footerMiddleContentMaximumWidth)
 
             Rectangle
             {
@@ -658,11 +676,13 @@ Maui.ApplicationWindow
             {
                 spacing: 0
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.alignment: Qt.AlignVCenter
 
                 Label
                 {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     horizontalAlignment: Text.AlignLeft
                     text: currentTrack && currentTrack.title ? String(currentTrack.title).trim() : i18n("Nothing Playing")
                     elide: Text.ElideRight
@@ -674,6 +694,7 @@ Maui.ApplicationWindow
                 Label
                 {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     horizontalAlignment: Text.AlignLeft
                     text: currentTrack && currentTrack.artist
                           ? (String(currentTrack.artist).trim() + (currentTrack.album ? " • " + String(currentTrack.album).trim() : ""))
@@ -851,7 +872,7 @@ Maui.ApplicationWindow
                 anchors.left: _footerEdgeSeekBar.left
                 anchors.right: _footerEdgeSeekBar.right
                 y: _footerEdgeSeekBar.y
-                height: Maui.Style.units.gridUnit
+                height: _footerEdgeSeekBar.height
                 z: _footerEdgeSeekBar.z + 1
                 visible: _footerEdgeSeekBar.visible
                 enabled: _footerEdgeSeekBar.enabled

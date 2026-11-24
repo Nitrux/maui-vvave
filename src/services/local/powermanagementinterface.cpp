@@ -9,48 +9,43 @@
 #include <KLocalizedString>
 
 #include <QDBusConnection>
-#include <QDBusConnectionInterface>
 #include <QDBusMessage>
-#include <QDBusPendingCall>
+#include <QDBusObjectPath>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
-
-#include <QString>
 #include <QDebug>
-#include <QGuiApplication>
+#include <QVariantMap>
+
+#include <utility>
 
 namespace
 {
-bool sessionBusServiceAvailable(const QString &serviceName)
-{
-    auto *interface = QDBusConnection::sessionBus().interface();
-    return interface && interface->isServiceRegistered(serviceName).value();
-}
+constexpr auto PortalService = "org.freedesktop.portal.Desktop";
+constexpr auto PortalPath = "/org/freedesktop/portal/desktop";
+constexpr auto InhibitInterface = "org.freedesktop.portal.Inhibit";
+constexpr auto RequestInterface = "org.freedesktop.portal.Request";
 }
 
 class PowerManagementInterfacePrivate
 {
 public:
-
     bool mPreventSleep = false;
-
     bool mInhibitedSleep = false;
-
-    uint mInhibitSleepCookie = 0;
-
+    bool mInhibitPending = false;
+    QString mRequestHandle;
 };
 
-PowerManagementInterface::PowerManagementInterface(QObject *parent) : QObject(parent), d(std::make_unique<PowerManagementInterfacePrivate>())
+PowerManagementInterface::PowerManagementInterface(QObject *parent)
+    : QObject(parent)
+    , d(std::make_unique<PowerManagementInterfacePrivate>())
 {
-    auto sessionBus = QDBusConnection::sessionBus();
-
-    sessionBus.connect(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                       QStringLiteral("/org/freedesktop/PowerManagement/Inhibit"),
-                       QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                       QStringLiteral("HasInhibitChanged"), this, SLOT(hostSleepInhibitChanged()));
 }
 
-PowerManagementInterface::~PowerManagementInterface() = default;
+PowerManagementInterface::~PowerManagementInterface()
+{
+    if (!d->mRequestHandle.isEmpty())
+        closeRequest(d->mRequestHandle);
+}
 
 bool PowerManagementInterface::preventSleep() const
 {
@@ -64,184 +59,83 @@ bool PowerManagementInterface::sleepInhibited() const
 
 void PowerManagementInterface::setPreventSleep(bool value)
 {
-    if (d->mPreventSleep == value) {
+    if (d->mPreventSleep == value)
         return;
-    }
+
+    d->mPreventSleep = value;
+    Q_EMIT preventSleepChanged();
 
     if (value) {
-        inhibitSleepPlasmaWorkspace();
-        inhibitSleepGnomeWorkspace();
-        d->mPreventSleep = true;
+        requestInhibit();
     } else {
-        uninhibitSleepPlasmaWorkspace();
-        uninhibitSleepGnomeWorkspace();
-        d->mPreventSleep = false;
-    }
+        if (!d->mRequestHandle.isEmpty()) {
+            const auto handle = std::exchange(d->mRequestHandle, QString{});
+            closeRequest(handle);
+        }
 
-    Q_EMIT preventSleepChanged();
+        if (d->mInhibitedSleep) {
+            d->mInhibitedSleep = false;
+            Q_EMIT sleepInhibitedChanged();
+        }
+    }
 }
 
 void PowerManagementInterface::retryInhibitingSleep()
 {
-    if (d->mPreventSleep && !d->mInhibitedSleep) {
-        inhibitSleepPlasmaWorkspace();
-        inhibitSleepGnomeWorkspace();
-    }
+    if (d->mPreventSleep && !d->mInhibitedSleep && !d->mInhibitPending)
+        requestInhibit();
 }
 
-void PowerManagementInterface::hostSleepInhibitChanged()
+void PowerManagementInterface::inhibitCallFinished(QDBusPendingCallWatcher *watcher)
 {
-}
+    const QDBusPendingReply<QDBusObjectPath> reply = *watcher;
+    watcher->deleteLater();
+    d->mInhibitPending = false;
 
-void PowerManagementInterface::inhibitDBusCallFinishedPlasmaWorkspace(QDBusPendingCallWatcher *aWatcher)
-{
-    QDBusPendingReply<uint> reply = *aWatcher;
     if (reply.isError()) {
-    } else {
-        d->mInhibitSleepCookie = reply.argumentAt<0>();
-        d->mInhibitedSleep = true;
-
-        Q_EMIT sleepInhibitedChanged();
-    }
-    aWatcher->deleteLater();
-}
-
-void PowerManagementInterface::uninhibitDBusCallFinishedPlasmaWorkspace(QDBusPendingCallWatcher *aWatcher)
-{
-    QDBusPendingReply<> reply = *aWatcher;
-    if (reply.isError()) {
-        qDebug() << "PowerManagementInterface::uninhibitDBusCallFinished" << reply.error();
-    } else {
-        d->mInhibitedSleep = false;
-
-        Q_EMIT sleepInhibitedChanged();
-    }
-    aWatcher->deleteLater();
-}
-
-void PowerManagementInterface::inhibitDBusCallFinishedGnomeWorkspace(QDBusPendingCallWatcher *aWatcher)
-{
-    QDBusPendingReply<uint> reply = *aWatcher;
-    if (reply.isError()) {
-        qDebug() << "PowerManagementInterface::inhibitDBusCallFinishedGnomeWorkspace" << reply.error();
-    } else {
-        d->mInhibitSleepCookie = reply.argumentAt<0>();
-        d->mInhibitedSleep = true;
-
-        Q_EMIT sleepInhibitedChanged();
-    }
-    aWatcher->deleteLater();
-}
-
-void PowerManagementInterface::uninhibitDBusCallFinishedGnomeWorkspace(QDBusPendingCallWatcher *aWatcher)
-{
-    QDBusPendingReply<> reply = *aWatcher;
-    if (reply.isError()) {
-        qDebug() << "PowerManagementInterface::uninhibitDBusCallFinished" << reply.error();
-    } else {
-        d->mInhibitedSleep = false;
-
-        Q_EMIT sleepInhibitedChanged();
-    }
-    aWatcher->deleteLater();
-}
-
-void PowerManagementInterface::inhibitSleepPlasmaWorkspace()
-{
-    if (!sessionBusServiceAvailable(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"))) {
+        qWarning() << "Could not acquire portal inhibition:" << reply.error().message();
         return;
     }
 
-    auto sessionBus = QDBusConnection::sessionBus();
-
-    auto inhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                                                      QStringLiteral("/org/freedesktop/PowerManagement/Inhibit"),
-                                                      QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                                                      QStringLiteral("Inhibit"));
-
-    inhibitCall.setArguments({{QGuiApplication::desktopFileName()}, {i18nc("explanation for sleep inhibit during play of music", "Playing music")}});
-
-    auto asyncReply = sessionBus.asyncCall(inhibitCall);
-
-    auto replyWatcher = new QDBusPendingCallWatcher(asyncReply, this);
-
-    QObject::connect(replyWatcher, &QDBusPendingCallWatcher::finished,
-                     this, &PowerManagementInterface::inhibitDBusCallFinishedPlasmaWorkspace);
-}
-
-void PowerManagementInterface::uninhibitSleepPlasmaWorkspace()
-{
-    if (!sessionBusServiceAvailable(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"))) {
+    const auto handle = reply.value().path();
+    if (handle.isEmpty()) {
+        qWarning() << "Portal returned an empty inhibition handle";
         return;
     }
 
-    auto sessionBus = QDBusConnection::sessionBus();
-
-    auto uninhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                                                      QStringLiteral("/org/freedesktop/PowerManagement/Inhibit"),
-                                                      QStringLiteral("org.freedesktop.PowerManagement.Inhibit"),
-                                                      QStringLiteral("UnInhibit"));
-
-    uninhibitCall.setArguments({{d->mInhibitSleepCookie}});
-
-    auto asyncReply = sessionBus.asyncCall(uninhibitCall);
-
-    auto replyWatcher = new QDBusPendingCallWatcher(asyncReply, this);
-
-    QObject::connect(replyWatcher, &QDBusPendingCallWatcher::finished,
-                     this, &PowerManagementInterface::uninhibitDBusCallFinishedPlasmaWorkspace);
-}
-
-void PowerManagementInterface::inhibitSleepGnomeWorkspace()
-{
-    if (!sessionBusServiceAvailable(QStringLiteral("org.gnome.SessionManager"))) {
+    if (!d->mPreventSleep) {
+        closeRequest(handle);
         return;
     }
 
-    auto sessionBus = QDBusConnection::sessionBus();
-
-    auto inhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.gnome.SessionManager"),
-                                                      QStringLiteral("/org/gnome/SessionManager"),
-                                                      QStringLiteral("org.gnome.SessionManager"),
-                                                      QStringLiteral("Inhibit"));
-
-    // See: https://gitlab.gnome.org/GNOME/gnome-session/-/blob/master/gnome-session/org.gnome.SessionManager.xml
-    // The last argument are flag settings to specify what should be inhibited:
-    //    1  = Inhibit logging out
-    //    2  = Inhibit user switching
-    //    4  = Inhibit suspending the session or computer
-    //    8  = Inhibit the session being marked as idle
-    //    16 = Inhibit auto-mounting removable media for the session
-    inhibitCall.setArguments({{QCoreApplication::applicationName()}, {uint(0)},
-                              {i18nc("explanation for sleep inhibit during play of music", "Playing music")}, {uint(12)}});
-
-    auto asyncReply = sessionBus.asyncCall(inhibitCall);
-
-    auto replyWatcher = new QDBusPendingCallWatcher(asyncReply, this);
-
-    QObject::connect(replyWatcher, &QDBusPendingCallWatcher::finished,
-                     this, &PowerManagementInterface::inhibitDBusCallFinishedGnomeWorkspace);
+    d->mRequestHandle = handle;
+    d->mInhibitedSleep = true;
+    Q_EMIT sleepInhibitedChanged();
 }
 
-void PowerManagementInterface::uninhibitSleepGnomeWorkspace()
+void PowerManagementInterface::requestInhibit()
 {
-    if (!sessionBusServiceAvailable(QStringLiteral("org.gnome.SessionManager"))) {
+    if (d->mInhibitPending || !d->mRequestHandle.isEmpty())
         return;
-    }
 
-    auto sessionBus = QDBusConnection::sessionBus();
+    auto call = QDBusMessage::createMethodCall(
+        QString::fromLatin1(PortalService), QString::fromLatin1(PortalPath),
+        QString::fromLatin1(InhibitInterface), QStringLiteral("Inhibit"));
+    call.setArguments({QString{}, uint(12),
+                       QVariantMap{{QStringLiteral("reason"),
+                                    i18nc("explanation for sleep inhibit during play of music", "Playing music")}}});
 
-    auto uninhibitCall = QDBusMessage::createMethodCall(QStringLiteral("org.gnome.SessionManager"),
-                                                        QStringLiteral("/org/gnome/SessionManager"),
-                                                        QStringLiteral("org.gnome.SessionManager"),
-                                                        QStringLiteral("UnInhibit"));
+    d->mInhibitPending = true;
+    auto *watcher = new QDBusPendingCallWatcher(
+        QDBusConnection::sessionBus().asyncCall(call), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished,
+            this, &PowerManagementInterface::inhibitCallFinished);
+}
 
-    uninhibitCall.setArguments({{d->mInhibitSleepCookie}});
-
-    auto asyncReply = sessionBus.asyncCall(uninhibitCall);
-
-    auto replyWatcher = new QDBusPendingCallWatcher(asyncReply, this);
-
-    QObject::connect(replyWatcher, &QDBusPendingCallWatcher::finished,
-                     this, &PowerManagementInterface::uninhibitDBusCallFinishedGnomeWorkspace);
+void PowerManagementInterface::closeRequest(const QString &handle)
+{
+    auto call = QDBusMessage::createMethodCall(
+        QString::fromLatin1(PortalService), handle,
+        QString::fromLatin1(RequestInterface), QStringLiteral("Close"));
+    QDBusConnection::sessionBus().asyncCall(call);
 }
