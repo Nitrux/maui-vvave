@@ -3,11 +3,11 @@ import QtQuick.Controls
 
 import org.mauikit.controls as Maui
 
-Maui.SettingsDialog
+Maui.InfoDialog
 {
     id: control
 
-    Maui.Controls.title: i18n("Shortcuts")
+    title: i18n("Shortcuts")
 
     property var shortcutGroups: []
 
